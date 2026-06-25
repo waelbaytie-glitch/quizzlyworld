@@ -594,6 +594,7 @@
     </div>
 
     <div class="actions-row">
+      <button class="btn-secondary" id="testTournamentBtn">🧪 Tournoi test (diagnostic)</button>
       <button class="btn-danger" id="resetTournamentBtn">⚠ Reset Tournament</button>
     </div>
   </div>
@@ -977,6 +978,7 @@ function renderMusicView(){
 const ROLE_KEY = 'bvt_role_v1';
 const ROLE_CODES = { admin: '654', joueur: '123' };
 const RESET_CODE = '9111';
+const TEST_TOURNAMENT_CODE = '9000';
 let currentRole = null;
 let pendingRole = null;
 
@@ -1063,6 +1065,7 @@ function submitResetCode(){
 // every time it opens and so check isAdmin() directly at render time instead).
 function applyRolePermissions(){
   document.getElementById('resetTournamentBtn').classList.toggle('hidden', !isAdmin());
+  document.getElementById('testTournamentBtn').classList.toggle('hidden', !isAdmin());
   document.getElementById('clearMatchBtn').classList.toggle('hidden', !isAdmin());
   document.getElementById('saveMatchBtn').classList.toggle('hidden', !isAdmin());
 }
@@ -2495,6 +2498,77 @@ function resetTournament(){
   showToast('Tournoi réinitialisé pour tout le monde');
 }
 
+/* ===================== TEST TOURNAMENT (diagnostic) ===================== */
+// Plays out an entire tournament — every group match, every knockout round, the
+// 3rd-place match, a scattering of arbitrary predictions — with random but valid
+// scores, using the exact same functions a real match save uses (recalcMatchStatus,
+// syncKnockoutSlots, assignMatchesToFreeCourts). This is for the Admin to verify
+// courts, the bracket, the podium and the prediction reveal all render correctly,
+// without having to manually play through dozens of real matches first.
+function simulateMatchResult(match){
+  const target = state.config.pointsPerGame;
+  const winnerIsTeam1 = Math.random() < 0.5;
+  for(let g = 0; g < 2; g++){ // 2 straight games is enough to decide a best-of-3
+    const winnerScore = target + Math.floor(Math.random() * 3); // target..target+2
+    const loserScore = Math.floor(Math.random() * (winnerScore - 1)); // always >=2 less
+    if(winnerIsTeam1){
+      match.games[g].team1 = String(winnerScore);
+      match.games[g].team2 = String(loserScore);
+    } else {
+      match.games[g].team1 = String(loserScore);
+      match.games[g].team2 = String(winnerScore);
+    }
+    recalcMatchStatus(match);
+  }
+}
+
+function castArbitraryPredictions(match){
+  if(!state.predictions[match.id]) state.predictions[match.id] = {};
+  const fakeVoterCount = 1 + Math.floor(Math.random() * 6);
+  for(let i = 0; i < fakeVoterCount; i++){
+    state.predictions[match.id]['testvoter_' + i] = Math.random() < 0.5 ? 'team1' : 'team2';
+  }
+  // Also cast this device's own vote sometimes, so the personal "Bon pronostic /
+  // Pronostic manqué" reveal can be checked too, not just the aggregate percentages.
+  if(Math.random() < 0.5){
+    state.predictions[match.id][getVoterId()] = Math.random() < 0.5 ? 'team1' : 'team2';
+  }
+}
+
+function runTestTournamentSimulation(){
+  generateGroups();
+  generateGroupMatches();
+  buildKnockoutSkeleton();
+  setupCourts();
+  state.stage = 'groups';
+
+  let guard = 0;
+  while(guard++ < 2000){
+    syncKnockoutSlots();
+    assignMatchesToFreeCourts();
+    const pending = state.matches.filter(m => m.status !== 'completed' && m.team1Id && m.team2Id);
+    if(pending.length === 0) break;
+    pending.forEach(m => {
+      castArbitraryPredictions(m);
+      simulateMatchResult(m);
+    });
+  }
+  saveState();
+  renderAll();
+  switchTab('bracket');
+  showToast('🧪 Tournoi test généré jusqu\'à la fin !');
+}
+
+function testTournamentBtnClick(){
+  const code = prompt('Code requis pour générer un tournoi test :');
+  if(code === null) return; // cancelled
+  if(code.trim() !== TEST_TOURNAMENT_CODE){
+    showToast('Code incorrect');
+    return;
+  }
+  runTestTournamentSimulation();
+}
+
 /* ===================== GLOBAL EVENT WIRING ===================== */
 function wireGlobalEvents(){
   wireSetupEvents();
@@ -2530,6 +2604,7 @@ function wireGlobalEvents(){
     if(e.target.id === 'championScreenOverlay') closeChampionScreen();
   });
 
+  document.getElementById('testTournamentBtn').addEventListener('click', testTournamentBtnClick);
   document.getElementById('resetTournamentBtn').addEventListener('click', resetTournament);
 
   document.getElementById('addSongBtn').addEventListener('click', addSong);
