@@ -663,13 +663,41 @@ let firebaseReady = false;
 let tournamentRef = null;
 let tournamentReady = false;
 let lastSyncedTournamentJSON = null;
+let lastAppliedUpdatedAt = 0;
 let tournamentSyncTimer = null;
 const TOURNAMENT_SYNC_FIELDS = ['stage', 'config', 'teams', 'groups', 'matches', 'courts', 'knockout'];
+// Firebase Realtime Database can't store an empty array/object — it just deletes
+// that path, so reading it back gives null instead of []. teams/groups/matches/
+// courts are always arrays in our state, so null here means "empty", not "missing".
+const TOURNAMENT_ARRAY_FIELDS = ['teams', 'groups', 'matches', 'courts'];
 
 function extractSyncableTournamentState(){
   const out = {};
   TOURNAMENT_SYNC_FIELDS.forEach(k => { out[k] = state[k]; });
   return out;
+}
+
+// Firebase drops every individual null-valued key (and empty array/object) on
+// write, so the value it echoes back never byte-matches our local JSON, which
+// always keeps those keys. Stripping nulls the same way on both sides before
+// comparing is what lets us reliably recognize "this is just my own echo".
+function stripNullsForCompare(value){
+  if(Array.isArray(value)){
+    const mapped = value.map(stripNullsForCompare).filter(v => v !== undefined);
+    return mapped.length ? mapped : undefined;
+  }
+  if(value && typeof value === 'object'){
+    const out = {};
+    Object.keys(value).forEach(k => {
+      const sv = stripNullsForCompare(value[k]);
+      if(sv !== undefined) out[k] = sv;
+    });
+    return Object.keys(out).length ? out : undefined;
+  }
+  return value === null ? undefined : value;
+}
+function jsonForCompare(value){
+  return JSON.stringify(stripNullsForCompare(value));
 }
 
 // Debounced so rapid edits (e.g. typing a team name) don't fire one Firebase write
@@ -683,9 +711,10 @@ function scheduleTournamentSync(){
 function pushTournamentState(){
   if(!tournamentReady) return;
   const payload = extractSyncableTournamentState();
-  const json = JSON.stringify(payload);
+  const json = jsonForCompare(payload);
   if(json === lastSyncedTournamentJSON) return; // nothing actually changed
   lastSyncedTournamentJSON = json;
+  payload.updatedAt = lastAppliedUpdatedAt = Date.now();
   tournamentRef.set(payload);
 }
 
@@ -726,10 +755,25 @@ function initFirebase(){
         pushTournamentState();
         return;
       }
-      const incomingJSON = JSON.stringify(val);
+      // Ignore a snapshot older than the last one we already applied/pushed — a
+      // slow round-trip can otherwise deliver a stale state after newer local
+      // changes (e.g. just-generated matches) and silently wipe them out.
+      if((val.updatedAt || 0) < lastAppliedUpdatedAt) return;
+      // Compare content only (without updatedAt, which is always fresh) so our own
+      // echo is correctly recognized — otherwise every push replaces state.matches
+      // etc. with newly-deserialized objects, orphaning whatever an open match
+      // modal had captured and silently dropping the next score typed into it.
+      const valContent = Object.assign({}, val);
+      delete valContent.updatedAt;
+      const incomingJSON = jsonForCompare(valContent);
       if(incomingJSON === lastSyncedTournamentJSON) return; // our own echo — already up to date
       lastSyncedTournamentJSON = incomingJSON;
-      TOURNAMENT_SYNC_FIELDS.forEach(k => { state[k] = val[k]; });
+      lastAppliedUpdatedAt = val.updatedAt || 0;
+      TOURNAMENT_SYNC_FIELDS.forEach(k => {
+        let v = val[k];
+        if(v == null && TOURNAMENT_ARRAY_FIELDS.includes(k)) v = [];
+        state[k] = v;
+      });
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
       if(currentRole) showStageScreen();
     });
@@ -1124,10 +1168,14 @@ function roundRobinRounds(teamIds){
 }
 
 function blankGames(){
+  // '' rather than null: Firebase Realtime Database silently drops null leaf
+  // values (and any array/object left with nothing but dropped values), so an
+  // unplayed match's games would vanish on the next sync. gameWinner() already
+  // treats '' and null as equivalent "no score yet", so this is a free fix.
   return [
-    { team1: null, team2: null },
-    { team1: null, team2: null },
-    { team1: null, team2: null }
+    { team1: '', team2: '' },
+    { team1: '', team2: '' },
+    { team1: '', team2: '' }
   ];
 }
 
@@ -1384,8 +1432,7 @@ function renderGamesContainer(match){
     inp.addEventListener('input', e=>{
       const gi = Number(e.target.dataset.game);
       const teamKey = e.target.dataset.team;
-      const val = e.target.value === '' ? null : e.target.value;
-      match.games[gi][teamKey] = val;
+      match.games[gi][teamKey] = e.target.value; // '' for cleared — see blankGames()
       recalcMatchStatus(match); // may free this match's court & advance the bracket
       saveState();
       updateGame3LockState(match); // toggle game-3 lock in place, no DOM rebuild
