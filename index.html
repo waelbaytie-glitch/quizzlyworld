@@ -745,6 +745,12 @@ const firebaseConfig = {
 
 let songsRef = null;
 let firebaseReady = false;
+// firebaseReady flips true as soon as the ref exists, but state.songs still holds
+// the local placeholder ids (from defaultState()) until the listener's first real
+// snapshot lands. Toggling/removing a song in that window would call
+// songsRef.child(<fake local id>)... which silently CREATES a phantom node instead
+// of erroring — songsLoaded gates against that.
+let songsLoaded = false;
 
 let predictionsRef = null;
 let predictionsReady = false;
@@ -841,6 +847,7 @@ function initFirebase(){
       state.songs = Object.keys(val || {})
         .map(key => Object.assign({ id: key }, val[key]))
         .sort((a,b)=> (a.ts||0) - (b.ts||0));
+      songsLoaded = true;
       renderMusicView();
     });
 
@@ -927,6 +934,7 @@ function addSong(){
 }
 
 function toggleSongJoue(id){
+  if(firebaseReady && !songsLoaded){ showToast('Chargement en cours, réessaie dans un instant'); return; }
   const song = state.songs.find(s => s.id === id);
   if(!song) return;
   const joue = !song.joue;
@@ -940,6 +948,7 @@ function toggleSongJoue(id){
 }
 
 function removeSong(id){
+  if(firebaseReady && !songsLoaded){ showToast('Chargement en cours, réessaie dans un instant'); return; }
   if(firebaseReady){
     songsRef.child(id).remove();
   } else {
