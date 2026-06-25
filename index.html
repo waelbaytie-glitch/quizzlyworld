@@ -356,6 +356,14 @@
     font-size:12px;
   }
   .app-footer img{height:34px;width:auto;}
+
+  .role-card{max-width:380px;margin:40px auto;text-align:center;}
+  .role-card h2{justify-content:center;}
+  .role-code-row{margin-top:18px;display:flex;gap:8px;justify-content:center;}
+  .role-code-row input{max-width:140px;text-align:center;letter-spacing:2px;}
+  .role-reset-zone{margin-top:26px;}
+  .role-reset-zone .btn-secondary{opacity:.65;}
+  .switch-role-btn{margin-left:10px;}
 </style>
 </head>
 <body>
@@ -366,6 +374,37 @@
     <h1>🏐 Beach Volleyball <span class="amp">&amp; BBQ</span></h1>
     <div class="sub">Peu importe ton niveau, l'important c'est de s'amuser ! 🌴</div>
   </header>
+
+  <!-- ===================== ROLE SCREEN ===================== -->
+  <div id="role-screen">
+    <div class="card role-card">
+      <h2>🔑 Qui es-tu ?</h2>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:18px;">Choisis ton rôle pour accéder au site.</p>
+      <div class="actions-row" style="justify-content:center;margin-top:0;">
+        <button class="btn-primary" id="roleJoueurBtn">🏐 Joueur</button>
+        <button class="btn-secondary" id="roleAdminBtn">🛠️ Admin</button>
+      </div>
+      <div id="roleCodeRow" class="role-code-row hidden">
+        <input type="password" id="roleCodeInput" placeholder="Code d'accès" inputmode="numeric" maxlength="6">
+        <button class="btn-primary" id="roleCodeSubmitBtn">Valider</button>
+      </div>
+      <div class="role-reset-zone">
+        <button class="btn-secondary btn-small" id="showResetRowBtn">⚠ Réinitialiser le tournoi</button>
+        <div id="resetCodeRow" class="role-code-row hidden">
+          <input type="password" id="resetCodeInput" placeholder="Code reset" inputmode="numeric" maxlength="6">
+          <button class="btn-danger" id="resetCodeSubmitBtn">Réinitialiser</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== PLAYER WAITING SCREEN ===================== -->
+  <div id="player-waiting-screen" class="hidden">
+    <div class="card role-card">
+      <h2>⏳ En attente...</h2>
+      <p style="color:var(--muted);">L'organisateur prépare encore les équipes — reviens dans un instant !</p>
+    </div>
+  </div>
 
   <!-- ===================== SETUP SCREEN ===================== -->
   <div id="setup-screen">
@@ -501,6 +540,7 @@
 <footer class="app-footer">
   <span>Présenté par</span>
   <img src="pcl-logo.png" alt="PCL Construction">
+  <button class="btn-secondary btn-small switch-role-btn" id="switchRoleBtn">Changer de rôle</button>
 </footer>
 
 <!-- ===================== MATCH MODAL ===================== -->
@@ -586,6 +626,7 @@ function defaultState(){
 function saveState(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch(e){ console.error('Failed to save state', e); }
+  scheduleTournamentSync();
 }
 
 function loadState(){
@@ -604,20 +645,49 @@ function showToast(msg){
   t._timer = setTimeout(()=> t.classList.remove('show'), 1800);
 }
 
-/* ===================== MUSIC SUGGESTIONS (shared via Firebase) ===================== */
-// Fill these in with your free Firebase project's config (Firebase console → Project
-// settings → General → "Your apps" → SDK setup and configuration) to make the
-// Musique tab sync live across every visitor's phone. Until then, it falls back to
-// this browser's own local storage (same as the rest of the app, but not shared).
+/* ===================== SHARED STATE (Firebase) ===================== */
+// Powers two things, live across every visitor's phone instead of staying stuck in
+// each browser's own local storage: the Musique tab (/songs), and the entire
+// tournament (/tournament — teams, scores, courts, bracket). Falls back to this
+// browser's own local storage alone if the config below isn't filled in.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT"
+  apiKey: "AIzaSyD2lRVxWjelrWbhgqcgRWHamRbpxX0azNE",
+  authDomain: "quizzlyworld.firebaseapp.com",
+  databaseURL: "https://quizzlyworld-default-rtdb.firebaseio.com",
+  projectId: "quizzlyworld"
 };
 
 let songsRef = null;
 let firebaseReady = false;
+
+let tournamentRef = null;
+let tournamentReady = false;
+let lastSyncedTournamentJSON = null;
+let tournamentSyncTimer = null;
+const TOURNAMENT_SYNC_FIELDS = ['stage', 'config', 'teams', 'groups', 'matches', 'courts', 'knockout'];
+
+function extractSyncableTournamentState(){
+  const out = {};
+  TOURNAMENT_SYNC_FIELDS.forEach(k => { out[k] = state[k]; });
+  return out;
+}
+
+// Debounced so rapid edits (e.g. typing a team name) don't fire one Firebase write
+// per keystroke — only the settled value goes out, ~350ms after the last change.
+function scheduleTournamentSync(){
+  if(!tournamentReady) return;
+  clearTimeout(tournamentSyncTimer);
+  tournamentSyncTimer = setTimeout(pushTournamentState, 350);
+}
+
+function pushTournamentState(){
+  if(!tournamentReady) return;
+  const payload = extractSyncableTournamentState();
+  const json = JSON.stringify(payload);
+  if(json === lastSyncedTournamentJSON) return; // nothing actually changed
+  lastSyncedTournamentJSON = json;
+  tournamentRef.set(payload);
+}
 
 function initFirebase(){
   const note = document.getElementById('songsSyncNote');
@@ -627,6 +697,7 @@ function initFirebase(){
   }
   try{
     firebase.initializeApp(firebaseConfig);
+
     songsRef = firebase.database().ref('songs');
     firebaseReady = true;
     if(note) note.textContent = '🟢 Synchronisé en direct — visible par tout le monde.';
@@ -643,6 +714,24 @@ function initFirebase(){
         .map(key => Object.assign({ id: key }, val[key]))
         .sort((a,b)=> (a.ts||0) - (b.ts||0));
       renderMusicView();
+    });
+
+    tournamentRef = firebase.database().ref('tournament');
+    tournamentReady = true;
+    tournamentRef.on('value', snapshot=>{
+      const val = snapshot.val();
+      if(!val){
+        // First time this Firebase database is used for the tournament: seed it
+        // with whatever this device currently has (e.g. the pre-loaded teams).
+        pushTournamentState();
+        return;
+      }
+      const incomingJSON = JSON.stringify(val);
+      if(incomingJSON === lastSyncedTournamentJSON) return; // our own echo — already up to date
+      lastSyncedTournamentJSON = incomingJSON;
+      TOURNAMENT_SYNC_FIELDS.forEach(k => { state[k] = val[k]; });
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+      if(currentRole) showStageScreen();
     });
   }catch(e){
     console.error('Firebase init failed', e);
@@ -721,19 +810,132 @@ function renderMusicView(){
   });
 }
 
+/* ===================== ROLES (admin / joueur) ===================== */
+// A soft access gate, not real security: the codes live in this public page's
+// source, so anyone determined enough can read them. That's an accepted trade-off
+// for a casual one-day event — the goal is to stop accidental score edits by
+// guests, not to defend against a motivated attacker.
+const ROLE_KEY = 'bvt_role_v1';
+const ROLE_CODES = { admin: '654', joueur: '123' };
+const RESET_CODE = '9111';
+let currentRole = null;
+let pendingRole = null;
+
+function isAdmin(){ return currentRole === 'admin'; }
+
+function showRoleScreen(){
+  document.getElementById('role-screen').classList.remove('hidden');
+  document.getElementById('setup-screen').classList.add('hidden');
+  document.getElementById('tournament-screen').classList.add('hidden');
+  document.getElementById('player-waiting-screen').classList.add('hidden');
+  document.getElementById('roleCodeRow').classList.add('hidden');
+  document.getElementById('resetCodeRow').classList.add('hidden');
+}
+
+function chooseRole(role){
+  pendingRole = role;
+  document.getElementById('resetCodeRow').classList.add('hidden');
+  document.getElementById('roleCodeRow').classList.remove('hidden');
+  const input = document.getElementById('roleCodeInput');
+  input.value = '';
+  input.focus();
+}
+
+function submitRoleCode(){
+  const input = document.getElementById('roleCodeInput');
+  if(input.value.trim() === ROLE_CODES[pendingRole]){
+    setRole(pendingRole);
+  } else {
+    showToast('Code incorrect');
+    input.value = '';
+  }
+}
+
+function setRole(role){
+  currentRole = role;
+  try{ localStorage.setItem(ROLE_KEY, role); }catch(e){}
+  applyRolePermissions();
+  showStageScreen();
+}
+
+function switchRole(){
+  try{ localStorage.removeItem(ROLE_KEY); }catch(e){}
+  currentRole = null;
+  showRoleScreen();
+}
+
+function toggleResetCodeRow(){
+  document.getElementById('roleCodeRow').classList.add('hidden');
+  const row = document.getElementById('resetCodeRow');
+  row.classList.toggle('hidden');
+  if(!row.classList.contains('hidden')){
+    const input = document.getElementById('resetCodeInput');
+    input.value = '';
+    input.focus();
+  }
+}
+
+function submitResetCode(){
+  const input = document.getElementById('resetCodeInput');
+  if(input.value.trim() !== RESET_CODE){
+    showToast('Code incorrect');
+    input.value = '';
+    return;
+  }
+  performReset();
+  document.getElementById('resetCodeRow').classList.add('hidden');
+  showToast('Tournoi réinitialisé pour tout le monde');
+}
+
+// Admin-only controls that exist as static DOM elements (so a one-time class
+// toggle is enough — unlike the match modal's score inputs, which get rebuilt
+// every time it opens and so check isAdmin() directly at render time instead).
+function applyRolePermissions(){
+  document.getElementById('resetTournamentBtn').classList.toggle('hidden', !isAdmin());
+  document.getElementById('clearMatchBtn').classList.toggle('hidden', !isAdmin());
+  document.getElementById('saveMatchBtn').classList.toggle('hidden', !isAdmin());
+}
+
+// Single source of truth for which of the 3 top-level screens is visible, based
+// on both the tournament's stage and the current visitor's role — players get a
+// waiting screen instead of the team-setup form, which is admin-only.
+function showStageScreen(){
+  document.getElementById('role-screen').classList.add('hidden');
+  const setupEl = document.getElementById('setup-screen');
+  const tourEl = document.getElementById('tournament-screen');
+  const waitEl = document.getElementById('player-waiting-screen');
+  if(state.stage === 'setup' && !isAdmin()){
+    setupEl.classList.add('hidden');
+    tourEl.classList.add('hidden');
+    waitEl.classList.remove('hidden');
+    return;
+  }
+  waitEl.classList.add('hidden');
+  if(state.stage === 'setup'){
+    tourEl.classList.add('hidden');
+    setupEl.classList.remove('hidden');
+    renderSetupScreen();
+  } else {
+    setupEl.classList.add('hidden');
+    tourEl.classList.remove('hidden');
+    renderAll();
+  }
+}
+
 /* ===================== INIT ===================== */
 function init(){
   const loaded = loadState();
   state = loaded || defaultState();
   if(!state.songs) state.songs = [];
   initFirebase();
-  if(state.stage === 'setup'){
-    renderSetupScreen();
-  } else {
-    showTournamentScreen();
-    renderAll();
-  }
   wireGlobalEvents();
+  try{ currentRole = localStorage.getItem(ROLE_KEY); }catch(e){ currentRole = null; }
+  if(currentRole){
+    applyRolePermissions();
+    showStageScreen();
+  } else {
+    showRoleScreen();
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -813,7 +1015,7 @@ function wireSetupEvents(){
   document.getElementById('numTeamsInput').addEventListener('change', e=>{
     let n = parseInt(e.target.value, 10);
     if(isNaN(n)) n = 10;
-    n = Math.max(4, Math.min(16, n));
+    n = Math.max(2, Math.min(30, n));
     e.target.value = n;
     state.config.numTeams = n;
     renderSetupScreen();
@@ -848,22 +1050,11 @@ function onStartTournament(){
   setupCourts();
   state.stage = 'groups';
   saveState();
-  showTournamentScreen();
-  renderAll();
+  showStageScreen();
   assignMatchesToFreeCourts();
   saveState();
   renderAll();
   showToast('Tournament started! Good luck 🏐');
-}
-
-function showTournamentScreen(){
-  document.getElementById('setup-screen').classList.add('hidden');
-  document.getElementById('tournament-screen').classList.remove('hidden');
-}
-
-function showSetupScreen(){
-  document.getElementById('tournament-screen').classList.add('hidden');
-  document.getElementById('setup-screen').classList.remove('hidden');
 }
 /* ===================== GROUP & SCHEDULE GENERATION ===================== */
 // One more group every ~4 extra teams (capped at 8 groups for the max of 30 teams),
@@ -1146,6 +1337,7 @@ function renderCourtSelect(match){
     sel.appendChild(opt);
   });
   sel.value = match.courtId || '';
+  sel.disabled = !isAdmin();
   sel.onchange = ()=>{
     const newCourtId = sel.value || null;
     const oldCourt = state.courts.find(c => c.id === match.courtId);
@@ -1185,6 +1377,9 @@ function renderGamesContainer(match){
     container.appendChild(row);
   }
   updateGame3LockState(match);
+  if(!isAdmin()){
+    container.querySelectorAll('.score-input').forEach(inp => { inp.disabled = true; });
+  }
   container.querySelectorAll('.score-input').forEach(inp=>{
     inp.addEventListener('input', e=>{
       const gi = Number(e.target.dataset.game);
@@ -1205,7 +1400,7 @@ function updateGame3LockState(match){
   if(!row) return;
   const unlocked = isGame3Unlocked(match);
   row.classList.toggle('locked', !unlocked);
-  row.querySelectorAll('.score-input').forEach(inp => { inp.disabled = !unlocked; });
+  row.querySelectorAll('.score-input').forEach(inp => { inp.disabled = !unlocked || !isAdmin(); });
   const label = row.querySelector('.locked-label');
   if(label) label.style.display = unlocked ? 'none' : 'inline';
 }
@@ -1879,19 +2074,40 @@ function switchTab(tabName){
 }
 
 /* ===================== RESET ===================== */
+// Shared by the admin's in-app reset button and the landing-page reset code (the
+// latter has no "are you sure?" prompt — entering the secret code is the
+// confirmation — and also wipes the copy everyone else sees via Firebase).
+function performReset(){
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+  state = defaultState();
+  lastSyncedTournamentJSON = null;
+  pushTournamentState();
+}
+
 function resetTournament(){
   const ok = confirm('This will erase all teams, scores and the bracket. Are you sure?');
   if(!ok) return;
-  localStorage.removeItem(STORAGE_KEY);
-  state = defaultState();
-  showSetupScreen();
-  renderSetupScreen();
+  performReset();
+  showStageScreen();
   showToast('Tournament reset');
 }
 
 /* ===================== GLOBAL EVENT WIRING ===================== */
 function wireGlobalEvents(){
   wireSetupEvents();
+
+  document.getElementById('roleJoueurBtn').addEventListener('click', ()=> chooseRole('joueur'));
+  document.getElementById('roleAdminBtn').addEventListener('click', ()=> chooseRole('admin'));
+  document.getElementById('roleCodeSubmitBtn').addEventListener('click', submitRoleCode);
+  document.getElementById('roleCodeInput').addEventListener('keydown', e=>{
+    if(e.key === 'Enter') submitRoleCode();
+  });
+  document.getElementById('showResetRowBtn').addEventListener('click', toggleResetCodeRow);
+  document.getElementById('resetCodeSubmitBtn').addEventListener('click', submitResetCode);
+  document.getElementById('resetCodeInput').addEventListener('keydown', e=>{
+    if(e.key === 'Enter') submitResetCode();
+  });
+  document.getElementById('switchRoleBtn').addEventListener('click', switchRole);
 
   document.querySelectorAll('.tabbar button').forEach(b=>{
     b.addEventListener('click', ()=> switchTab(b.dataset.tab));
