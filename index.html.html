@@ -1,0 +1,1740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>PCL Beach Volleyball &amp; BBQ — Tournament Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Sampled straight from the PCL logo (oval green #104735 / #013415, gold #FEC532)
+       and the Beach Volleyball & BBQ event banner (CTA green, gold accent). */
+    --bg:#051c10;
+    --panel:#0f3320;
+    --panel2:#154027;
+    --accent:#FFC72C;
+    --accent2:#2bab63;
+    --accent-ink:#0c2e1a;
+    --text:#fbf6e8;
+    --muted:#9fc2ab;
+    --green:#2fae5d;
+    --green-bg:#0f3320;
+    --yellow:#F0B400;
+    --yellow-bg:#3a3315;
+    --gray:#5d7c69;
+    --gray-bg:#1c3322;
+    --red:#e6483c;
+    --radius:14px;
+    --shadow:0 4px 16px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Poppins',sans-serif;
+    background:linear-gradient(160deg,#051c10,#0f3320 55%,#051c10);
+    color:var(--text);
+    min-height:100vh;
+    padding-bottom:40px;
+  }
+  .hidden{display:none !important;}
+  h1,h2,h3,h4{font-weight:700;margin:0 0 8px;}
+  button{
+    font-family:inherit;
+    border:none;
+    cursor:pointer;
+    border-radius:10px;
+    font-weight:600;
+    transition:transform .08s ease, opacity .15s ease;
+  }
+  button:active{transform:scale(.96);}
+  input,select{
+    font-family:inherit;
+    border-radius:8px;
+    border:1px solid #24402f;
+    background:#0c1f12;
+    color:var(--text);
+    padding:8px 10px;
+    font-size:14px;
+  }
+  input:focus,select:focus{outline:2px solid var(--accent);}
+  .container{max-width:980px;margin:0 auto;padding:14px;}
+  header.app-header{
+    text-align:center;
+    padding:18px 14px 10px;
+  }
+  .pcl-badge{
+    width:128px;height:83px;
+    margin:0 auto 10px;
+    overflow:hidden;
+    position:relative;
+  }
+  .pcl-badge img{
+    position:absolute;
+    top:0; left:0;
+    width:128px;
+    /* crops out the "CONSTRUCTION" wordmark below the oval mark — the source PNG
+       is 1336x1096 with the oval occupying the top 865px (~79%) of that height */
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,.45));
+  }
+  header.app-header h1{
+    font-size:clamp(22px,6vw,32px);
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    color:var(--text);
+    margin-bottom:4px;
+  }
+  header.app-header h1 .amp{
+    color:var(--accent);
+  }
+  header.app-header .sub{color:var(--muted);font-size:13px;}
+
+  /* ---------- Setup screen ---------- */
+  .card{
+    background:var(--panel);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:14px;
+    box-shadow:var(--shadow);
+    border:1px solid #1d3a26;
+  }
+  .card h2{font-size:16px;color:var(--accent);display:flex;align-items:center;gap:8px;}
+  .field-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-bottom:10px;
+  }
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    flex:1 1 140px;
+  }
+  .field label{font-size:12px;color:var(--muted);font-weight:600;}
+  .seg{
+    display:flex;
+    background:#0c1f12;
+    border-radius:8px;
+    overflow:hidden;
+    border:1px solid #24402f;
+  }
+  .seg button{
+    flex:1;
+    background:transparent;
+    color:var(--muted);
+    padding:8px 6px;
+    border-radius:0;
+    font-size:13px;
+  }
+  .seg button.active{background:var(--accent);color:#163d1f;}
+  .team-list{display:flex;flex-direction:column;gap:8px;max-height:520px;overflow-y:auto;padding-right:4px;}
+  .team-item{
+    background:var(--panel2);
+    border-radius:10px;
+    padding:10px;
+    border:1px solid #1d3a2680;
+  }
+  .team-item .team-name-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
+  .team-item .team-name-row input{flex:1;font-weight:600;}
+  .team-badge{
+    width:26px;height:26px;border-radius:50%;
+    background:var(--accent);color:#163d1f;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;flex-shrink:0;
+  }
+  .players-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .players-grid input{font-size:12px;padding:6px 8px;}
+  .btn-primary{
+    background:linear-gradient(120deg,var(--accent),#e6a400);
+    color:#163d1f;padding:12px 18px;font-size:15px;
+  }
+  .btn-secondary{
+    background:var(--panel2);color:var(--text);padding:10px 16px;font-size:13px;
+    border:1px solid #24402f;
+  }
+  .btn-danger{background:var(--red);color:#fff;padding:8px 12px;font-size:12px;}
+  .btn-small{padding:6px 10px;font-size:12px;}
+  .actions-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:10px;}
+  .full-w{width:100%;}
+
+  /* ---------- Tabs ---------- */
+  .tabbar{
+    display:flex;
+    gap:6px;
+    background:var(--panel);
+    border-radius:12px;
+    padding:5px;
+    margin-bottom:14px;
+    overflow-x:auto;
+    box-shadow:var(--shadow);
+  }
+  .tabbar button{
+    flex:1;
+    white-space:nowrap;
+    background:transparent;
+    color:var(--muted);
+    padding:10px 8px;
+    font-size:13px;
+  }
+  .tabbar button.active{background:var(--accent);color:#163d1f;}
+
+  /* ---------- Courts ---------- */
+  .courts-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:12px;
+  }
+  .court-card{
+    border-radius:var(--radius);
+    padding:14px;
+    box-shadow:var(--shadow);
+    border:1px solid #1d3a26;
+    min-height:140px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+  }
+  .court-card.available{background:var(--gray-bg);}
+  .court-card.busy{background:var(--yellow-bg);}
+  .court-card .court-title{font-size:13px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+  .court-card .court-status{font-size:11px;padding:3px 8px;border-radius:20px;font-weight:700;display:inline-block;margin-top:4px;}
+  .court-card.available .court-status{background:var(--gray);color:#fff;}
+  .court-card.busy .court-status{background:var(--yellow);color:#23210a;}
+  .court-match{margin-top:10px;}
+  .court-match .vs{font-size:15px;font-weight:700;margin:4px 0;}
+  .court-match .vs .vs-sep{color:var(--muted);font-weight:400;font-size:12px;margin:0 6px;}
+  .court-match .game-scores{font-size:12px;color:var(--muted);}
+  .court-empty{color:var(--muted);font-size:13px;font-style:italic;margin-top:10px;}
+
+  /* ---------- Match list / cards ---------- */
+  .group-block{margin-bottom:18px;}
+  .group-block h3{color:var(--accent2);font-size:15px;}
+  .match-card{
+    border-radius:12px;
+    padding:12px;
+    margin-bottom:8px;
+    border:1px solid #1d3a26;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .match-card.completed{background:var(--green-bg);border-color:#1f5c3a;}
+  .match-card.in_progress{background:var(--yellow-bg);border-color:#6b5c14;}
+  .match-card.upcoming{background:var(--gray-bg);border-color:#24402f;}
+  .match-teams{font-weight:600;font-size:14px;flex:1 1 180px;}
+  .match-teams .vline{color:var(--muted);font-weight:400;font-size:12px;}
+  .match-meta{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:2px;}
+  .status-pill{
+    font-size:10px;
+    font-weight:700;
+    padding:3px 9px;
+    border-radius:20px;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+  }
+  .match-card.completed .status-pill{background:var(--green);color:#072a14;}
+  .match-card.in_progress .status-pill{background:var(--yellow);color:#23210a;}
+  .match-card.upcoming .status-pill{background:var(--gray);color:#fff;}
+  .match-score-mini{font-size:13px;font-weight:700;color:var(--accent);}
+
+  /* ---------- Standings table ---------- */
+  table.standings{width:100%;border-collapse:collapse;font-size:13px;}
+  table.standings th,table.standings td{padding:7px 6px;text-align:center;border-bottom:1px solid #1f3828;}
+  table.standings th{color:var(--muted);font-size:11px;text-transform:uppercase;}
+  table.standings td.team-cell{text-align:left;font-weight:600;}
+  table.standings tr.qualifies td.team-cell{color:var(--accent);}
+  table.standings tr.qualifies{background:#14301c40;}
+  .qual-tag{font-size:9px;background:var(--accent);color:#163d1f;padding:2px 6px;border-radius:6px;margin-left:6px;font-weight:700;}
+
+  /* ---------- Bracket ---------- */
+  .bracket{
+    display:flex;
+    gap:24px;
+    overflow-x:auto;
+    padding:10px 4px 20px;
+  }
+  .bracket-round{display:flex;flex-direction:column;justify-content:center;gap:18px;min-width:200px;}
+  .bracket-round h4{text-align:center;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px;}
+  .bracket-match{
+    border-radius:10px;
+    padding:10px;
+    border:1px solid #1d3a26;
+    font-size:13px;
+  }
+  .bracket-match.completed{background:var(--green-bg);}
+  .bracket-match.in_progress{background:var(--yellow-bg);}
+  .bracket-match.upcoming, .bracket-match.pending{background:var(--gray-bg);}
+  .bracket-team{display:flex;justify-content:space-between;padding:3px 4px;border-radius:4px;}
+  .bracket-team.winner{font-weight:700;color:var(--accent);}
+  .bracket-team .tbd{color:var(--muted);font-style:italic;}
+
+  /* ---------- Export ---------- */
+  #export-text{
+    width:100%;min-height:340px;font-family:monospace;font-size:12px;
+    background:#0a160d;color:#dff0e0;padding:12px;border-radius:10px;border:1px solid #24402f;
+    white-space:pre-wrap;
+  }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(5,8,16,.75);
+    display:flex;align-items:flex-end;justify-content:center;
+    z-index:50;
+  }
+  @media(min-width:640px){
+    .modal-overlay{align-items:center;}
+  }
+  .modal-box{
+    background:var(--panel);
+    border-radius:18px 18px 0 0;
+    padding:18px;
+    width:100%;
+    max-width:480px;
+    max-height:92vh;
+    overflow-y:auto;
+    box-shadow:0 -8px 30px rgba(0,0,0,.5);
+  }
+  @media(min-width:640px){
+    .modal-box{border-radius:18px;}
+  }
+  .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .modal-close{background:var(--panel2);color:var(--text);width:32px;height:32px;border-radius:50%;font-size:16px;}
+  .game-row{
+    display:flex;align-items:center;gap:10px;
+    background:var(--panel2);border-radius:10px;padding:10px;margin-bottom:8px;
+  }
+  .game-row.locked{opacity:.4;}
+  .game-row label{flex:0 0 60px;font-size:12px;color:var(--muted);font-weight:700;}
+  .game-row .score-input-wrap{display:flex;align-items:center;gap:6px;flex:1;}
+  .game-row input[type=number]{width:60px;text-align:center;font-size:16px;font-weight:700;}
+  .game-row .score-vs{color:var(--muted);font-size:12px;}
+  .court-select-row{display:flex;gap:10px;align-items:center;margin-bottom:12px;}
+  .match-winner-banner{
+    text-align:center;font-weight:700;color:var(--accent);
+    background:var(--green-bg);border-radius:10px;padding:8px;margin:10px 0;font-size:13px;
+  }
+  .toast{
+    position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    background:var(--accent);color:#163d1f;padding:10px 18px;border-radius:30px;
+    font-weight:600;font-size:13px;box-shadow:var(--shadow);z-index:100;
+    opacity:0;transition:opacity .3s ease;pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+  .empty-note{color:var(--muted);font-size:13px;text-align:center;padding:20px;}
+  .scroll-x{overflow-x:auto;}
+
+  .app-footer{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:24px 14px 10px;
+    color:var(--muted);
+    font-size:12px;
+  }
+  .app-footer img{height:34px;width:auto;}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header class="app-header">
+    <div class="pcl-badge"><img src="PCL Logo - with Construction.png" alt="PCL Construction"></div>
+    <h1>🏐 Beach Volleyball <span class="amp">&amp; BBQ</span></h1>
+    <div class="sub">Peu importe ton niveau, l'important c'est de s'amuser ! 🌴</div>
+  </header>
+
+  <!-- ===================== SETUP SCREEN ===================== -->
+  <div id="setup-screen">
+
+    <div class="card">
+      <h2>1. Tournament Settings</h2>
+      <div class="field-row">
+        <div class="field">
+          <label for="numTeamsInput">Number of teams (2–30)</label>
+          <input type="number" id="numTeamsInput" min="2" max="30" value="10">
+        </div>
+        <div class="field">
+          <label>Number of courts</label>
+          <input type="number" id="numCourtsInput" min="1" max="12" value="5">
+        </div>
+        <div class="field">
+          <label>Points per game</label>
+          <div class="seg" id="pointsSeg">
+            <button data-points="15" class="active">15 (cap 17)</button>
+            <button data-points="21">21 (cap 23)</button>
+          </div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field" style="flex:1 1 100%;">
+          <label>Format</label>
+          <div style="font-size:13px;color:var(--muted);background:var(--panel2);padding:8px 10px;border-radius:8px;">
+            Best of 3 games — first to win 2 games wins the match.
+          </div>
+        </div>
+      </div>
+      <div id="formatPreview" style="font-size:12px;color:var(--accent2);margin-top:6px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. Teams &amp; Players</h2>
+      <div id="teamList" class="team-list"></div>
+    </div>
+
+    <div class="actions-row">
+      <button class="btn-primary full-w" id="startTournamentBtn">🚀 Generate &amp; Start Tournament</button>
+    </div>
+  </div>
+
+  <!-- ===================== TOURNAMENT SCREEN ===================== -->
+  <div id="tournament-screen" class="hidden">
+    <div class="tabbar">
+      <button data-tab="courts" class="active">Courts</button>
+      <button data-tab="teams">Teams</button>
+      <button data-tab="matches">Matches</button>
+      <button data-tab="standings">Standings</button>
+      <button data-tab="bracket">Bracket</button>
+      <button data-tab="rules">Règles</button>
+      <button data-tab="export">Export</button>
+    </div>
+
+    <div id="tab-courts" class="tab-panel">
+      <div class="card">
+        <h2>🏟️ Live Court View</h2>
+        <div id="courtsGrid" class="courts-grid"></div>
+      </div>
+    </div>
+
+    <div id="tab-teams" class="tab-panel hidden">
+      <div id="teamsRosterContainer"></div>
+    </div>
+
+    <div id="tab-matches" class="tab-panel hidden">
+      <div id="matchesContainer"></div>
+    </div>
+
+    <div id="tab-standings" class="tab-panel hidden">
+      <div id="standingsContainer"></div>
+    </div>
+
+    <div id="tab-bracket" class="tab-panel hidden">
+      <div class="card">
+        <h2>🏆 Elimination Bracket</h2>
+        <div id="bracketContainer"></div>
+      </div>
+    </div>
+
+    <div id="tab-rules" class="tab-panel hidden">
+      <div id="rulesContainer"></div>
+    </div>
+
+    <div id="tab-export" class="tab-panel hidden">
+      <div class="card">
+        <h2>📋 Export Standings</h2>
+        <div class="actions-row" style="justify-content:flex-start;margin-top:0;margin-bottom:10px;">
+          <button class="btn-secondary" id="copyExportBtn">Copy to clipboard</button>
+        </div>
+        <textarea id="export-text" readonly></textarea>
+      </div>
+    </div>
+
+    <div class="actions-row">
+      <button class="btn-danger" id="resetTournamentBtn">⚠ Reset Tournament</button>
+    </div>
+  </div>
+</div>
+
+<footer class="app-footer">
+  <span>Présenté par</span>
+  <img src="PCL Logo - with Construction.png" alt="PCL Construction">
+</footer>
+
+<!-- ===================== MATCH MODAL ===================== -->
+<div id="matchModalOverlay" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="matchModalTitle">Match</h3>
+      <button class="modal-close" id="closeMatchModalBtn">✕</button>
+    </div>
+    <div class="court-select-row">
+      <label style="font-size:12px;color:var(--muted);font-weight:700;">Court</label>
+      <select id="matchCourtSelect"></select>
+    </div>
+    <div id="gamesContainer"></div>
+    <div id="matchWinnerBanner" class="match-winner-banner hidden"></div>
+    <div class="actions-row">
+      <button class="btn-secondary" id="clearMatchBtn">Clear scores</button>
+      <button class="btn-primary" id="saveMatchBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+'use strict';
+/* ===================== CONSTANTS & STATE ===================== */
+const STORAGE_KEY = 'bvt_tournament_state_v1';
+
+function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+
+var state = null;
+
+const DEFAULT_TEAMS = [
+  { name: "Esti d'joueurs", players: ['Adrien Saycocie', 'Victor Hubert', 'Grégoire Bibaut', 'Can UGURAL'] },
+  { name: 'Reply All', players: ['Marshall Hofmann', 'Frédéric Delample', 'Gabrielle Houle', 'Wael Baytie'] },
+  { name: 'The Daltons', players: ['Mikael Lamothe', 'Alex Xin', 'Don Phan', 'Victor Alexandre Frings-Morales'] },
+  { name: 'ze best', players: ['Jean-Paul Bou-Sleiman', 'Jeanne Legrand', 'John-Raymark Dela Rosa', 'Florent Blanc'] },
+  { name: 'Sunset Smash', players: ['Paula Marino Alvarez', 'Caren Khairallah', 'Clarissa Holland Wey', 'Katiane Witt Pierry'] },
+  { name: 'Handsomes', players: ['Maxime Cloutier', 'Simon Lamy', 'Jérémie Devinant', ''] },
+  { name: 'Persepolis', players: ['Ali Mohammadinezhad', 'Pouya Asna', 'Sam Abdelrahman', 'Ali Gillani'] },
+  { name: 'Ball Busters', players: ['Laurie-Pascale Therrien', 'Frédérique Faucher', 'Erik Baker', 'Sandrine Bissonnette'] },
+  { name: 'SmashBros', players: ['Arvy Manaloto', 'Alain Lamontagne', 'John Patrick Dela Rosa', 'Yamoor Hamid'] },
+  { name: 'Hard Hat Hitters', players: ['Jaâfar Ziha', 'Frederik Marion', 'Christopher Roa-Quispe', 'Yves Larocque'] }
+];
+
+function defaultState(){
+  return {
+    stage: 'setup', // setup | groups | knockout | done
+    config: { numTeams: DEFAULT_TEAMS.length, numCourts: 5, pointsPerGame: 15, gamesToWinMatch: 2 },
+    teams: DEFAULT_TEAMS.map(t => ({ id: uid('team'), name: t.name, players: t.players.slice() })),
+    groups: [],      // {id, name, teamIds:[]}
+    matches: [],      // see createMatch()
+    courts: [],      // {id, name, status:'available'|'busy', matchId:null}
+    knockout: null,  // bracket structure once generated
+    activeTab: 'courts'
+  };
+}
+
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ console.error('Failed to save state', e); }
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){ console.error('Failed to load state', e); }
+  return null;
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=> t.classList.remove('show'), 1800);
+}
+
+/* ===================== INIT ===================== */
+function init(){
+  const loaded = loadState();
+  state = loaded || defaultState();
+  if(state.stage === 'setup'){
+    renderSetupScreen();
+  } else {
+    showTournamentScreen();
+    renderAll();
+  }
+  wireGlobalEvents();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+/* ===================== SETUP SCREEN ===================== */
+function describeFormat(n){
+  if(n < 2) return '';
+  const plan = bracketPlanForTeamCount(n);
+  const roundName = roundNamesForBracketSize(plan.bracketSize)[0];
+  const groupWord = plan.numGroups === 1 ? 'group' : 'groups';
+  let txt = plan.numGroups + ' ' + groupWord + ', round robin → Top 2 of each group';
+  if(plan.wildcardCount > 0) txt += ' + ' + plan.wildcardCount + ' best remaining team(s) (wildcards)';
+  txt += ' advance to the ' + roundName.toUpperCase() + '.';
+  return txt;
+}
+
+function ensureTeamsArray(n){
+  const teams = state.teams;
+  while(teams.length < n){
+    const idx = teams.length + 1;
+    teams.push({ id: uid('team'), name: 'Team ' + idx, players: ['', '', '', ''] });
+  }
+  while(teams.length > n){
+    teams.pop();
+  }
+}
+
+function renderSetupScreen(){
+  document.getElementById('numTeamsInput').value = state.config.numTeams;
+  document.getElementById('numCourtsInput').value = state.config.numCourts;
+  document.querySelectorAll('#pointsSeg button').forEach(b=>{
+    b.classList.toggle('active', Number(b.dataset.points) === state.config.pointsPerGame);
+  });
+  ensureTeamsArray(state.config.numTeams);
+  document.getElementById('formatPreview').textContent = describeFormat(state.config.numTeams);
+  renderTeamList();
+  saveState();
+}
+
+function renderTeamList(){
+  const container = document.getElementById('teamList');
+  container.innerHTML = '';
+  state.teams.forEach((team, i)=>{
+    const item = document.createElement('div');
+    item.className = 'team-item';
+    item.innerHTML = `
+      <div class="team-name-row">
+        <div class="team-badge">${i+1}</div>
+        <input type="text" class="team-name-input" data-idx="${i}" value="${escapeAttr(team.name)}" placeholder="Team name">
+      </div>
+      <div class="players-grid">
+        ${[0,1,2,3].map(p=>`<input type="text" class="player-input" data-idx="${i}" data-p="${p}" value="${escapeAttr(team.players[p]||'')}" placeholder="Player ${p+1} (optional)">`).join('')}
+      </div>
+    `;
+    container.appendChild(item);
+  });
+  container.querySelectorAll('.team-name-input').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      state.teams[Number(e.target.dataset.idx)].name = e.target.value;
+      saveState();
+    });
+  });
+  container.querySelectorAll('.player-input').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const i = Number(e.target.dataset.idx), p = Number(e.target.dataset.p);
+      state.teams[i].players[p] = e.target.value;
+      saveState();
+    });
+  });
+}
+
+function escapeAttr(str){
+  return String(str==null?'':str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escapeHtml(str){ return escapeAttr(str); }
+
+function wireSetupEvents(){
+  document.getElementById('numTeamsInput').addEventListener('change', e=>{
+    let n = parseInt(e.target.value, 10);
+    if(isNaN(n)) n = 10;
+    n = Math.max(4, Math.min(16, n));
+    e.target.value = n;
+    state.config.numTeams = n;
+    renderSetupScreen();
+  });
+  document.getElementById('numCourtsInput').addEventListener('change', e=>{
+    let n = parseInt(e.target.value, 10);
+    if(isNaN(n) || n < 1) n = 5;
+    e.target.value = n;
+    state.config.numCourts = n;
+    saveState();
+  });
+  document.querySelectorAll('#pointsSeg button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      state.config.pointsPerGame = Number(b.dataset.points);
+      document.querySelectorAll('#pointsSeg button').forEach(x=>x.classList.toggle('active', x===b));
+      saveState();
+    });
+  });
+  document.getElementById('startTournamentBtn').addEventListener('click', onStartTournament);
+}
+
+function onStartTournament(){
+  const n = state.teams.length;
+  if(n < 2 || n > 30){ showToast('Number of teams must be between 2 and 30'); return; }
+  const namesFilled = state.teams.every(t=> t.name && t.name.trim().length>0);
+  if(!namesFilled){ showToast('Please name all teams before starting'); return; }
+  if(state.config.numCourts < 1){ showToast('Need at least 1 court'); return; }
+
+  generateGroups();
+  generateGroupMatches();
+  buildKnockoutSkeleton();
+  setupCourts();
+  state.stage = 'groups';
+  saveState();
+  showTournamentScreen();
+  renderAll();
+  assignMatchesToFreeCourts();
+  saveState();
+  renderAll();
+  showToast('Tournament started! Good luck 🏐');
+}
+
+function showTournamentScreen(){
+  document.getElementById('setup-screen').classList.add('hidden');
+  document.getElementById('tournament-screen').classList.remove('hidden');
+}
+
+function showSetupScreen(){
+  document.getElementById('tournament-screen').classList.add('hidden');
+  document.getElementById('setup-screen').classList.remove('hidden');
+}
+/* ===================== GROUP & SCHEDULE GENERATION ===================== */
+// One more group every ~4 extra teams (capped at 8 groups for the max of 30 teams),
+// keeping group sizes in a sane 2-5 range. bracketPlanForTeamCount() below derives
+// how many of those groups' qualifiers need wildcard top-ups for a clean bracket.
+function numGroupsForTeamCount(n){
+  const thresholds = [6, 9, 13, 17, 21, 25, 29];
+  let groups = 1;
+  thresholds.forEach(t => { if(n >= t) groups++; });
+  return Math.min(8, groups);
+}
+
+function nextPowerOfTwo(x){
+  let p = 2;
+  while(p < x) p *= 2;
+  return p;
+}
+
+function bracketPlanForTeamCount(n){
+  const numGroups = numGroupsForTeamCount(n);
+  const directQualifiers = numGroups * 2;
+  const bracketSize = nextPowerOfTwo(directQualifiers);
+  const wildcardCount = bracketSize - directQualifiers;
+  return { numGroups, directQualifiers, bracketSize, wildcardCount };
+}
+
+const KNOCKOUT_ROUND_NAMES = ['Round of 16', 'Quarterfinal', 'Semifinal', 'Final'];
+const KNOCKOUT_STAGE_KEYS  = ['round16', 'quarterfinal', 'semifinal', 'final'];
+function roundNamesForBracketSize(bracketSize){
+  const totalRounds = Math.round(Math.log2(bracketSize));
+  return KNOCKOUT_ROUND_NAMES.slice(KNOCKOUT_ROUND_NAMES.length - totalRounds);
+}
+
+function generateGroups(){
+  const n = state.teams.length;
+  const numGroups = numGroupsForTeamCount(n);
+  const groups = [];
+  for(let g=0; g<numGroups; g++){
+    groups.push({ id: uid('group'), name: 'Group ' + String.fromCharCode(65 + g), teamIds: [] });
+  }
+  // distribute teams evenly round-robin across groups
+  state.teams.forEach((team, i)=>{
+    groups[i % numGroups].teamIds.push(team.id);
+  });
+  state.groups = groups;
+}
+
+function roundRobinRounds(teamIds){
+  let ids = teamIds.slice();
+  if(ids.length % 2 !== 0) ids.push(null); // bye placeholder
+  const n = ids.length;
+  const rounds = [];
+  let rotation = ids.slice();
+  for(let r=0; r<n-1; r++){
+    const roundPairs = [];
+    for(let i=0;i<n/2;i++){
+      const a = rotation[i], b = rotation[n-1-i];
+      if(a!=null && b!=null) roundPairs.push([a,b]);
+    }
+    rounds.push(roundPairs);
+    const fixed = rotation[0];
+    const rest = rotation.slice(1);
+    rest.unshift(rest.pop());
+    rotation = [fixed, ...rest];
+  }
+  return rounds;
+}
+
+function blankGames(){
+  return [
+    { team1: null, team2: null },
+    { team1: null, team2: null },
+    { team1: null, team2: null }
+  ];
+}
+
+function createMatch(opts){
+  return Object.assign({
+    id: uid('match'),
+    stage: 'group',
+    groupId: null,
+    order: 0,
+    team1Id: null,
+    team2Id: null,
+    team1Source: null,
+    team2Source: null,
+    games: blankGames(),
+    status: 'upcoming',
+    winnerId: null,
+    courtId: null
+  }, opts);
+}
+
+function generateGroupMatches(){
+  const matches = [];
+  // build per-group round lists, then interleave rounds across groups for fair scheduling order
+  const groupRoundLists = state.groups.map(g => roundRobinRounds(g.teamIds));
+  const maxRounds = Math.max(...groupRoundLists.map(r => r.length));
+  let order = 0;
+  for(let r=0; r<maxRounds; r++){
+    state.groups.forEach((group, gi)=>{
+      const rounds = groupRoundLists[gi];
+      if(r < rounds.length){
+        rounds[r].forEach(pair=>{
+          matches.push(createMatch({
+            stage: 'group',
+            groupId: group.id,
+            order: order++,
+            team1Id: pair[0],
+            team2Id: pair[1]
+          }));
+        });
+      }
+    });
+  }
+  state.matches = matches;
+}
+
+function setupCourts(){
+  const n = state.config.numCourts;
+  state.courts = [];
+  for(let i=1;i<=n;i++){
+    state.courts.push({ id: uid('court'), name: 'Court ' + i, status: 'available', matchId: null });
+  }
+}
+
+function busyTeamIdSet(){
+  const busy = new Set();
+  state.matches.forEach(m=>{
+    if(m.status === 'in_progress'){
+      if(m.team1Id) busy.add(m.team1Id);
+      if(m.team2Id) busy.add(m.team2Id);
+    }
+  });
+  return busy;
+}
+
+function assignMatchesToFreeCourts(){
+  let freeCourts = state.courts.filter(c => c.status === 'available');
+  if(freeCourts.length === 0) return;
+  const busy = busyTeamIdSet();
+  const candidates = state.matches
+    .filter(m => m.status === 'upcoming' && m.team1Id && m.team2Id)
+    .sort((a,b)=> a.order - b.order);
+
+  for(const court of freeCourts){
+    const match = candidates.find(m =>
+      m.status === 'upcoming' && !busy.has(m.team1Id) && !busy.has(m.team2Id)
+    );
+    if(!match) break;
+    match.status = 'in_progress';
+    match.courtId = court.id;
+    court.status = 'busy';
+    court.matchId = match.id;
+    busy.add(match.team1Id);
+    busy.add(match.team2Id);
+    if(match.stage !== 'group'){
+      showToast('🏐 ' + stageLabel(match.stage) + ' prêt : ' + teamName(match.team1Id) + ' vs ' + teamName(match.team2Id) + ' !');
+    }
+  }
+}
+
+function freeCourtForMatch(match){
+  const court = state.courts.find(c => c.id === match.courtId);
+  if(court){
+    court.status = 'available';
+    court.matchId = null;
+  }
+  match.courtId = null;
+}
+/* ===================== SCORING LOGIC ===================== */
+function gameWinner(g){
+  if(g.team1==null || g.team1==='' || g.team2==null || g.team2==='') return null;
+  const a = Number(g.team1), b = Number(g.team2);
+  if(isNaN(a) || isNaN(b) || a===b) return null;
+  const target = state.config.pointsPerGame;
+  const cap = target + 2;
+  const max = Math.max(a,b);
+  const diff = Math.abs(a-b);
+  if(max >= cap) return a>b ? 'team1' : 'team2';
+  if(max >= target && diff >= 2) return a>b ? 'team1' : 'team2';
+  return null;
+}
+
+function computeGameWinCounts(match){
+  let w1=0, w2=0;
+  for(let i=0;i<3;i++){
+    const gw = gameWinner(match.games[i]);
+    if(gw==='team1') w1++; else if(gw==='team2') w2++;
+  }
+  return { w1, w2 };
+}
+
+function isGame3Unlocked(match){
+  const gw1 = gameWinner(match.games[0]);
+  const gw2 = gameWinner(match.games[1]);
+  return !!gw1 && !!gw2 && gw1 !== gw2;
+}
+
+function findMatchById(id){ return state.matches.find(m => m.id === id); }
+function findTeamById(id){ return state.teams.find(t => t.id === id); }
+function teamName(id){ const t = findTeamById(id); return t ? t.name : 'TBD'; }
+
+function recalcMatchStatus(match){
+  const wasCompleted = match.status === 'completed';
+  const { w1, w2 } = computeGameWinCounts(match);
+  if(w1 >= 2){
+    match.winnerId = match.team1Id;
+    match.loserId = match.team2Id;
+    match.status = 'completed';
+  } else if(w2 >= 2){
+    match.winnerId = match.team2Id;
+    match.loserId = match.team1Id;
+    match.status = 'completed';
+  } else {
+    match.winnerId = null;
+    match.loserId = null;
+    if(match.status === 'completed') match.status = match.courtId ? 'in_progress' : 'upcoming';
+  }
+  if(match.status === 'completed' && !wasCompleted){
+    onMatchCompleted(match);
+  } else if(match.status !== 'completed' && wasCompleted){
+    onMatchUncompleted(match);
+  }
+}
+
+function onMatchCompleted(match){
+  freeCourtForMatch(match);
+  if(match.stage === 'final'){
+    state.stage = 'done';
+  }
+  syncKnockoutSlots();
+  assignMatchesToFreeCourts();
+}
+
+function onMatchUncompleted(match){
+  // syncKnockoutSlots() recomputes every not-yet-started knockout match's teams from
+  // scratch, so reverting a result here naturally clears any slot that depended on it
+  // — no separate "undo propagation" bookkeeping needed.
+  syncKnockoutSlots();
+  assignMatchesToFreeCourts();
+  if(match.stage === 'final' && state.stage === 'done'){
+    state.stage = 'knockout';
+  }
+}
+
+/* ===================== MATCH MODAL ===================== */
+let currentModalMatchId = null;
+
+function openMatchModal(matchId){
+  const match = findMatchById(matchId);
+  if(!match) return;
+  currentModalMatchId = matchId;
+  document.getElementById('matchModalTitle').textContent = teamName(match.team1Id) + ' vs ' + teamName(match.team2Id);
+  renderCourtSelect(match);
+  renderGamesContainer(match);
+  updateWinnerBanner(match);
+  document.getElementById('matchModalOverlay').classList.remove('hidden');
+}
+
+function closeMatchModal(){
+  document.getElementById('matchModalOverlay').classList.add('hidden');
+  currentModalMatchId = null;
+  renderAll(); // scores auto-save live, so reflect any change even if Save was never clicked
+}
+
+function renderCourtSelect(match){
+  const sel = document.getElementById('matchCourtSelect');
+  sel.innerHTML = '';
+  const noneOpt = document.createElement('option');
+  noneOpt.value = '';
+  noneOpt.textContent = 'Unassigned';
+  sel.appendChild(noneOpt);
+  state.courts.forEach(c=>{
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    const occupiedByOther = c.matchId && c.matchId !== match.id;
+    opt.textContent = c.name + (occupiedByOther ? ' (busy)' : '');
+    opt.disabled = !!occupiedByOther;
+    sel.appendChild(opt);
+  });
+  sel.value = match.courtId || '';
+  sel.onchange = ()=>{
+    const newCourtId = sel.value || null;
+    const oldCourt = state.courts.find(c => c.id === match.courtId);
+    if(oldCourt){ oldCourt.status = 'available'; oldCourt.matchId = null; }
+    match.courtId = newCourtId;
+    if(newCourtId){
+      const newCourt = state.courts.find(c => c.id === newCourtId);
+      newCourt.status = 'busy';
+      newCourt.matchId = match.id;
+      if(match.status === 'upcoming') match.status = 'in_progress';
+    }
+    saveState();
+    renderCourtsView();
+  };
+}
+
+function renderGamesContainer(match){
+  // Built once per modal open. Re-running this on every keystroke would replace the
+  // focused <input> with a fresh DOM node and kick the user out mid-digit, so score
+  // updates afterwards only mutate values/attributes in place via updateGame3LockState().
+  const container = document.getElementById('gamesContainer');
+  container.innerHTML = '';
+  for(let i=0;i<3;i++){
+    const row = document.createElement('div');
+    row.className = 'game-row';
+    row.dataset.gameRow = i;
+    const g = match.games[i];
+    row.innerHTML = `
+      <label>Game ${i+1}</label>
+      <div class="score-input-wrap">
+        <input type="number" min="0" class="score-input" data-game="${i}" data-team="team1" value="${g.team1 ?? ''}" placeholder="0">
+        <span class="score-vs">–</span>
+        <input type="number" min="0" class="score-input" data-game="${i}" data-team="team2" value="${g.team2 ?? ''}" placeholder="0">
+      </div>
+      <span class="locked-label" style="font-size:11px;color:var(--muted);">locked</span>
+    `;
+    container.appendChild(row);
+  }
+  updateGame3LockState(match);
+  container.querySelectorAll('.score-input').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const gi = Number(e.target.dataset.game);
+      const teamKey = e.target.dataset.team;
+      const val = e.target.value === '' ? null : e.target.value;
+      match.games[gi][teamKey] = val;
+      recalcMatchStatus(match); // may free this match's court & advance the bracket
+      saveState();
+      updateGame3LockState(match); // toggle game-3 lock in place, no DOM rebuild
+      updateWinnerBanner(match);
+      renderCourtSelect(match); // reflect court freed/auto-filled while modal is open
+    });
+  });
+}
+
+function updateGame3LockState(match){
+  const row = document.querySelector('#gamesContainer .game-row[data-game-row="2"]');
+  if(!row) return;
+  const unlocked = isGame3Unlocked(match);
+  row.classList.toggle('locked', !unlocked);
+  row.querySelectorAll('.score-input').forEach(inp => { inp.disabled = !unlocked; });
+  const label = row.querySelector('.locked-label');
+  if(label) label.style.display = unlocked ? 'none' : 'inline';
+}
+
+function updateWinnerBanner(match){
+  const banner = document.getElementById('matchWinnerBanner');
+  if(match.winnerId){
+    banner.textContent = '🏆 ' + teamName(match.winnerId) + ' wins the match!';
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+function clearCurrentMatch(){
+  const match = findMatchById(currentModalMatchId);
+  if(!match) return;
+  match.games = blankGames();
+  recalcMatchStatus(match);
+  saveState();
+  renderGamesContainer(match);
+  updateWinnerBanner(match);
+  renderCourtSelect(match);
+}
+
+function saveCurrentMatch(){
+  const match = findMatchById(currentModalMatchId);
+  if(!match) return;
+  // recalcMatchStatus already ran live on every keystroke (and already triggered
+  // court-freeing / bracket advancement on completion) — this is just a safety net.
+  recalcMatchStatus(match);
+  saveState();
+  const finishedStatus = match.status;
+  closeMatchModal(); // also re-renders all tabs
+  showToast(finishedStatus === 'completed' ? 'Match saved — result recorded' : 'Scores saved');
+}
+/* ===================== STANDINGS ===================== */
+function computeGroupStandings(groupId){
+  const group = state.groups.find(g => g.id === groupId);
+  if(!group) return [];
+  const stats = {};
+  group.teamIds.forEach(tid=>{
+    stats[tid] = { teamId: tid, played:0, mw:0, ml:0, gw:0, gl:0, pf:0, pa:0 };
+  });
+  state.matches.forEach(m=>{
+    if(m.groupId !== groupId || m.status !== 'completed') return;
+    const s1 = stats[m.team1Id], s2 = stats[m.team2Id];
+    if(!s1 || !s2) return;
+    s1.played++; s2.played++;
+    const { w1, w2 } = computeGameWinCounts(m);
+    s1.gw += w1; s1.gl += w2;
+    s2.gw += w2; s2.gl += w1;
+    m.games.forEach(g=>{
+      if(g.team1!=null && g.team1!=='' && g.team2!=null && g.team2!==''){
+        s1.pf += Number(g.team1); s1.pa += Number(g.team2);
+        s2.pf += Number(g.team2); s2.pa += Number(g.team1);
+      }
+    });
+    if(m.winnerId === m.team1Id){ s1.mw++; s2.ml++; }
+    else if(m.winnerId === m.team2Id){ s2.mw++; s1.ml++; }
+  });
+  const arr = Object.values(stats);
+  sortStandingsArray(arr);
+  return arr;
+}
+
+// Ranks by rate-per-match-played rather than raw totals, so a team from a bigger
+// group (more round-robin matches) doesn't get an artificial edge over a team
+// from a smaller group when ranking across groups (e.g. best 3rd-place teams).
+function sortStandingsArray(arr){
+  const rate = (num, played) => played ? num / played : 0;
+  arr.sort((a,b)=>{
+    const aWinPct = rate(a.mw, a.played), bWinPct = rate(b.mw, b.played);
+    if(bWinPct !== aWinPct) return bWinPct - aWinPct;
+    const aGameRate = rate(a.gw - a.gl, a.played), bGameRate = rate(b.gw - b.gl, b.played);
+    if(bGameRate !== aGameRate) return bGameRate - aGameRate;
+    const aPtRate = rate(a.pf - a.pa, a.played), bPtRate = rate(b.pf - b.pa, b.played);
+    if(bPtRate !== aPtRate) return bPtRate - aPtRate;
+    return teamName(a.teamId).localeCompare(teamName(b.teamId));
+  });
+}
+
+function getAllGroupStandings(){
+  const map = {};
+  state.groups.forEach(g => { map[g.id] = computeGroupStandings(g.id); });
+  return map;
+}
+
+// Pools every team that didn't finish top-2 in its group (3rd, 4th...), ranked
+// together by the same rate-based criteria as sortStandingsArray(). Groups of
+// different sizes can leave different numbers of "leftover" teams, so wildcard
+// candidates aren't limited to 3rd place — whichever leftover teams rank highest
+// across all groups fill the remaining bracket slots.
+function getAllRemainingTeamsRanked(){
+  const pool = [];
+  state.groups.forEach(g=>{
+    computeGroupStandings(g.id).forEach((s, idx)=>{
+      if(idx >= 2) pool.push(Object.assign({}, s, { rankInGroup: idx + 1 }));
+    });
+  });
+  sortStandingsArray(pool);
+  return pool;
+}
+
+function getBestRemainingTeams(count){
+  if(count <= 0) return [];
+  return getAllRemainingTeamsRanked().slice(0, count);
+}
+
+function groupAllMatchesComplete(groupId){
+  return state.matches.filter(m => m.groupId === groupId).every(m => m.status === 'completed');
+}
+
+function allGroupsComplete(){
+  return state.groups.every(g => groupAllMatchesComplete(g.id));
+}
+/* ===================== KNOCKOUT BRACKET ===================== */
+function findTeamGroupId(teamId){
+  const g = state.groups.find(gr => gr.teamIds.includes(teamId));
+  return g ? g.id : null;
+}
+
+function nextOrderValue(){
+  return (state.matches.length ? Math.max(...state.matches.map(m=>m.order)) : 0) + 1;
+}
+
+// Builds the knockout bracket shape right when the tournament starts, before any
+// group match is played. Each slot carries a "source" describing how to fill it
+// later (a specific group's rank, the wildcard pool, or another match's winner)
+// instead of a resolved teamId — see resolveSource()/syncKnockoutSlots(). This is
+// what lets a quarterfinal go live the moment its own 1-2 feeder groups wrap up,
+// instead of waiting for every group in the tournament to finish.
+function buildKnockoutSkeleton(){
+  const groups = state.groups;
+  const numGroups = groups.length;
+  let order = nextOrderValue();
+  const standing = (groupId, rank) => ({ type:'standing', groupId, rank });
+  const winner = (matchId) => ({ type:'winner', matchId });
+
+  const directQualifiers = numGroups * 2;
+  const bracketSize = nextPowerOfTwo(directQualifiers);
+  const wildcardCount = bracketSize - directQualifiers;
+
+  // Round 1: cycle group_i's winner against group_(i+1)'s runner-up, so each match
+  // only ever depends on 2 specific groups — whichever 2 finish first unlocks it
+  // immediately, instead of waiting on every group in the tournament.
+  const firstRoundPairs = [];
+  for(let i=0; i<numGroups; i++){
+    const gA = groups[i].id, gB = groups[(i+1) % numGroups].id;
+    firstRoundPairs.push([ standing(gA,0), standing(gB,1) ]);
+  }
+  // Any bracket slots left over (to round up to a power of 2) are filled by the
+  // best non-top-2 teams across every group, seeded best-vs-worst. They can only
+  // be known once ALL groups are complete (need the full cross-group ranking).
+  for(let i=0; i<wildcardCount/2; i++){
+    firstRoundPairs.push([ { type:'wildcard', rank:i }, { type:'wildcard', rank: wildcardCount-1-i } ]);
+  }
+
+  const roundNames = roundNamesForBracketSize(bracketSize);
+  const stageKeys = KNOCKOUT_STAGE_KEYS.slice(KNOCKOUT_STAGE_KEYS.length - roundNames.length);
+
+  let currentRoundMatches = firstRoundPairs.map(([s1, s2]) =>
+    createMatch({ stage: stageKeys[0], order: order++, team1Source: s1, team2Source: s2 })
+  );
+  const rounds = [ { name: roundNames[0], matchIds: currentRoundMatches.map(m=>m.id) } ];
+  const allNewMatches = currentRoundMatches.slice();
+
+  for(let r=1; r<roundNames.length; r++){
+    const nextRoundMatches = [];
+    for(let i=0; i<currentRoundMatches.length; i+=2){
+      nextRoundMatches.push(createMatch({
+        stage: stageKeys[r], order: order++,
+        team1Source: winner(currentRoundMatches[i].id),
+        team2Source: winner(currentRoundMatches[i+1].id)
+      }));
+    }
+    rounds.push({ name: roundNames[r], matchIds: nextRoundMatches.map(m=>m.id) });
+    allNewMatches.push(...nextRoundMatches);
+    currentRoundMatches = nextRoundMatches;
+  }
+
+  state.matches.push(...allNewMatches);
+  state.knockout = { rounds, numGroups, bracketSize, wildcardCount };
+}
+
+// Returns the teamId a source currently resolves to, or null if its dependency
+// (a group's standings, the cross-group wildcard ranking, or another match's
+// winner) isn't ready yet.
+function resolveSource(source){
+  if(!source) return null;
+  if(source.type === 'winner'){
+    const m = findMatchById(source.matchId);
+    return (m && m.winnerId) || null;
+  }
+  if(source.type === 'standing'){
+    if(!groupAllMatchesComplete(source.groupId)) return null;
+    const s = computeGroupStandings(source.groupId)[source.rank];
+    return s ? s.teamId : null;
+  }
+  if(source.type === 'wildcard'){
+    if(!allGroupsComplete()) return null;
+    const s = getBestRemainingTeams(state.knockout.wildcardCount)[source.rank];
+    return s ? s.teamId : null;
+  }
+  return null;
+}
+
+// Re-derives every not-yet-started knockout match's teams from its sources. Run
+// after any match result changes (group or knockout) so a match goes from TBD to
+// "ready, go" the instant its specific feeder groups/matches are done — and so an
+// edited/undone result cleanly clears anything downstream that hadn't started yet.
+function syncKnockoutSlots(){
+  if(!state.knockout) return;
+  state.matches.forEach(m=>{
+    if(m.status !== 'upcoming') return;
+    if(m.team1Source) m.team1Id = resolveSource(m.team1Source);
+    if(m.team2Source) m.team2Id = resolveSource(m.team2Source);
+  });
+}
+
+function stageLabel(stage){
+  return { group:'Group', round16:'Round of 16', quarterfinal:'Quarterfinal', semifinal:'Semifinal', final:'Final' }[stage] || stage;
+}
+/* ===================== RENDER: ROOT ===================== */
+function renderAll(){
+  renderCourtsView();
+  renderTeamsRosterView();
+  renderMatchesView();
+  renderStandingsView();
+  renderBracketView();
+  renderRulesView();
+  renderExportView();
+}
+
+/* ===================== RENDER: TEAMS ROSTER ===================== */
+function renderTeamsRosterView(){
+  const container = document.getElementById('teamsRosterContainer');
+  container.innerHTML = '';
+  state.groups.forEach(group=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    const teamsHtml = group.teamIds.map(tid=>{
+      const team = findTeamById(tid);
+      const players = (team.players || []).filter(p => p && p.trim());
+      return `
+        <div class="team-item">
+          <div class="team-name-row">
+            <div class="team-badge">${escapeHtml(team.name.charAt(0).toUpperCase())}</div>
+            <strong style="font-size:15px;">${escapeHtml(team.name)}</strong>
+          </div>
+          ${players.length ? `<div class="players-grid" style="grid-template-columns:1fr 1fr;">${players.map(p=>`<div style="font-size:12px;color:var(--muted);padding:4px 8px;background:#0000001a;border-radius:6px;">🙋 ${escapeHtml(p)}</div>`).join('')}</div>` : '<div style="font-size:12px;color:var(--muted);font-style:italic;">No players listed</div>'}
+        </div>
+      `;
+    }).join('');
+    card.innerHTML = `<h2>${escapeHtml(group.name)} <span style="color:var(--muted);font-size:12px;font-weight:400;">(${group.teamIds.length} teams)</span></h2>` +
+      `<div class="team-list" style="max-height:none;">${teamsHtml}</div>`;
+    container.appendChild(card);
+  });
+}
+
+function miniScoreText(match){
+  const played = match.games.filter(g => gameWinner(g));
+  if(played.length === 0) return '';
+  return played.map(g => g.team1+'-'+g.team2).join(', ');
+}
+
+/* ===================== RENDER: COURTS ===================== */
+function renderCourtsView(){
+  const grid = document.getElementById('courtsGrid');
+  grid.innerHTML = '';
+  state.courts.forEach(court=>{
+    const card = document.createElement('div');
+    const match = court.matchId ? findMatchById(court.matchId) : null;
+    card.className = 'court-card ' + (match ? 'busy' : 'available');
+    if(match){
+      card.innerHTML = `
+        <div>
+          <div class="court-title">${escapeHtml(court.name)}</div>
+          <span class="court-status">IN PROGRESS</span>
+        </div>
+        <div class="court-match">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${stageLabel(match.stage)}${match.groupId ? ' · ' + groupName(match.groupId) : ''}</div>
+          <div class="vs">${escapeHtml(teamName(match.team1Id))}<span class="vs-sep">vs</span>${escapeHtml(teamName(match.team2Id))}</div>
+          <div class="game-scores">${miniScoreText(match) || 'No scores yet'}</div>
+        </div>
+      `;
+      card.addEventListener('click', ()=> openMatchModal(match.id));
+    } else {
+      card.innerHTML = `
+        <div>
+          <div class="court-title">${escapeHtml(court.name)}</div>
+          <span class="court-status">AVAILABLE</span>
+        </div>
+        <div class="court-empty">Waiting for next match…</div>
+      `;
+    }
+    grid.appendChild(card);
+  });
+}
+
+function groupName(groupId){
+  const g = state.groups.find(x => x.id === groupId);
+  return g ? g.name : '';
+}
+
+/* ===================== RENDER: MATCHES ===================== */
+function matchCardHtml(match){
+  const courtTxt = match.courtId ? (state.courts.find(c=>c.id===match.courtId)||{}).name : null;
+  const t1ready = !!match.team1Id, t2ready = !!match.team2Id;
+  const t1 = t1ready ? teamName(match.team1Id) : 'TBD';
+  const t2 = t2ready ? teamName(match.team2Id) : 'TBD';
+  const score = miniScoreText(match);
+  const clickable = t1ready && t2ready;
+  return `
+    <div class="match-card ${match.status}" data-match-id="${match.id}" style="${clickable?'cursor:pointer;':'opacity:.65;'}">
+      <div class="match-teams">${escapeHtml(t1)} <span class="vline">vs</span> ${escapeHtml(t2)}</div>
+      <div class="match-meta">
+        <span>${stageLabel(match.stage)}${match.groupId ? ' · ' + groupName(match.groupId) : ''}</span>
+        <span>${courtTxt ? '📍 ' + escapeHtml(courtTxt) : ''}</span>
+      </div>
+      <div style="text-align:right;">
+        <div class="status-pill">${match.status.replace('_',' ')}</div>
+        ${score ? `<div class="match-score-mini">${escapeHtml(score)}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderMatchesView(){
+  const container = document.getElementById('matchesContainer');
+  container.innerHTML = '';
+
+  const groupStageDiv = document.createElement('div');
+  state.groups.forEach(group=>{
+    const matches = state.matches.filter(m => m.groupId === group.id).sort((a,b)=>a.order-b.order);
+    const block = document.createElement('div');
+    block.className = 'card group-block';
+    block.innerHTML = `<h3>${escapeHtml(group.name)} — Round Robin</h3>` + matches.map(matchCardHtml).join('');
+    groupStageDiv.appendChild(block);
+  });
+  container.appendChild(groupStageDiv);
+
+  if(state.knockout){
+    state.knockout.rounds.forEach(round=>{
+      const matches = round.matchIds.map(findMatchById).sort((a,b)=>a.order-b.order);
+      const block = document.createElement('div');
+      block.className = 'card group-block';
+      block.innerHTML = `<h3>🏆 ${escapeHtml(round.name)}</h3>` + matches.map(matchCardHtml).join('');
+      container.appendChild(block);
+    });
+  }
+
+  container.querySelectorAll('.match-card').forEach(card=>{
+    const id = card.dataset.matchId;
+    const m = findMatchById(id);
+    if(m.team1Id && m.team2Id){
+      card.addEventListener('click', ()=> openMatchModal(id));
+    }
+  });
+}
+/* ===================== RENDER: STANDINGS ===================== */
+function qualifierCountForFormat(){
+  return 2; // top 2 per group always advance directly; wildcards are handled separately
+}
+
+function standingsTableHtml(group, standings){
+  const qualCount = qualifierCountForFormat();
+  const rows = standings.map((s,i)=>{
+    const qualifies = i < qualCount;
+    return `
+      <tr class="${qualifies ? 'qualifies' : ''}">
+        <td>${i+1}</td>
+        <td class="team-cell">${escapeHtml(teamName(s.teamId))}${qualifies ? '<span class="qual-tag">Q</span>' : ''}</td>
+        <td>${s.played}</td>
+        <td>${s.mw}</td>
+        <td>${s.ml}</td>
+        <td>${s.played ? Math.round(s.mw / s.played * 100) : 0}%</td>
+        <td>${s.gw}-${s.gl}</td>
+        <td>${s.pf}-${s.pa}</td>
+        <td>${s.pf - s.pa >= 0 ? '+' : ''}${s.pf - s.pa}</td>
+      </tr>
+    `;
+  }).join('');
+  return `
+    <div class="card">
+      <h2>${escapeHtml(group.name)}</h2>
+      <div class="scroll-x">
+        <table class="standings">
+          <thead><tr><th>#</th><th style="text-align:left;">Team</th><th>P</th><th>W</th><th>L</th><th title="Pourcentage de victoires — utilisé pour classer entre groupes de tailles différentes">%V</th><th>Games</th><th>Pts</th><th>Diff</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderStandingsView(){
+  const container = document.getElementById('standingsContainer');
+  container.innerHTML = '';
+  const standingsMap = getAllGroupStandings();
+
+  state.groups.forEach(group=>{
+    container.insertAdjacentHTML('beforeend', standingsTableHtml(group, standingsMap[group.id]));
+  });
+
+  const wildcardCount = state.knockout ? state.knockout.wildcardCount : 0;
+  if(wildcardCount > 0){
+    const remaining = getAllRemainingTeamsRanked();
+    const qualifiedIds = new Set(remaining.slice(0, wildcardCount).map(s=>s.teamId));
+    const rows = remaining.map((s,i)=>{
+      const qualifies = qualifiedIds.has(s.teamId);
+      return `
+        <tr class="${qualifies ? 'qualifies' : ''}">
+          <td>${i+1}</td>
+          <td class="team-cell">${escapeHtml(teamName(s.teamId))} <span style="color:var(--muted);font-size:11px;">(${escapeHtml(groupName(findTeamGroupId(s.teamId)))} — ${s.rankInGroup}e)</span>${qualifies ? '<span class="qual-tag">Q</span>' : ''}</td>
+          <td>${s.played}</td><td>${s.mw}</td><td>${s.ml}</td><td>${s.played ? Math.round(s.mw / s.played * 100) : 0}%</td><td>${s.gw}-${s.gl}</td><td>${s.pf}-${s.pa}</td><td>${s.pf-s.pa>=0?'+':''}${s.pf-s.pa}</td>
+        </tr>
+      `;
+    }).join('');
+    container.insertAdjacentHTML('beforeend', `
+      <div class="card">
+        <h2>Wildcard Ranking <span style="color:var(--muted);font-size:11px;font-weight:400;">(top ${wildcardCount} advance)</span></h2>
+        <div class="scroll-x">
+          <table class="standings">
+            <thead><tr><th>#</th><th style="text-align:left;">Team</th><th>P</th><th>W</th><th>L</th><th title="Pourcentage de victoires — classement basé sur ce taux car les groupes peuvent avoir des tailles différentes">%V</th><th>Games</th><th>Pts</th><th>Diff</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>
+    `);
+  }
+}
+
+/* ===================== RENDER: BRACKET ===================== */
+function bracketMatchHtml(match){
+  const t1 = match.team1Id ? teamName(match.team1Id) : 'TBD';
+  const t2 = match.team2Id ? teamName(match.team2Id) : 'TBD';
+  const w = match.winnerId;
+  return `
+    <div class="bracket-match ${match.status}">
+      <div class="bracket-team ${w && w===match.team1Id ? 'winner' : ''}">
+        <span class="${!match.team1Id?'tbd':''}">${escapeHtml(t1)}</span>
+        <span>${gameScoreSummary(match,'team1')}</span>
+      </div>
+      <div class="bracket-team ${w && w===match.team2Id ? 'winner' : ''}">
+        <span class="${!match.team2Id?'tbd':''}">${escapeHtml(t2)}</span>
+        <span>${gameScoreSummary(match,'team2')}</span>
+      </div>
+    </div>
+  `;
+}
+
+function gameScoreSummary(match, side){
+  const played = match.games.filter(g => gameWinner(g));
+  if(played.length===0) return '';
+  return played.map(g => g[side]).join('-');
+}
+
+function renderBracketView(){
+  const container = document.getElementById('bracketContainer');
+  if(!state.knockout){
+    container.innerHTML = '<div class="empty-note">The elimination bracket will appear here once the round robin group stage is complete.</div>';
+    return;
+  }
+  container.innerHTML = '';
+  const bracket = document.createElement('div');
+  bracket.className = 'bracket';
+  state.knockout.rounds.forEach(round=>{
+    const col = document.createElement('div');
+    col.className = 'bracket-round';
+    const matches = round.matchIds.map(findMatchById);
+    col.innerHTML = `<h4>${escapeHtml(round.name)}</h4>` + matches.map(bracketMatchHtml).join('');
+    bracket.appendChild(col);
+  });
+  container.appendChild(bracket);
+  let flatIdx = 0;
+  state.knockout.rounds.forEach(round=>{
+    round.matchIds.forEach(mid=>{
+      const m = findMatchById(mid);
+      const el = bracket.querySelectorAll('.bracket-match')[flatIdx];
+      if(el && m.team1Id && m.team2Id){
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', ()=> openMatchModal(mid));
+      }
+      flatIdx++;
+    });
+  });
+
+  if(state.stage === 'done'){
+    const finalMatch = findMatchById(state.knockout.rounds[state.knockout.rounds.length-1].matchIds[0]);
+    if(finalMatch && finalMatch.winnerId){
+      container.insertAdjacentHTML('afterbegin', `<div class="match-winner-banner" style="margin-bottom:14px;">🏆🏐 CHAMPION: ${escapeHtml(teamName(finalMatch.winnerId))} 🏐🏆</div>`);
+    }
+  }
+}
+
+/* ===================== RENDER: RULES ===================== */
+const FIRST_ROUND_NOUN_FR = {
+  'Final': 'FINALE',
+  'Semifinal': 'DEMI-FINALES',
+  'Quarterfinal': 'QUARTS DE FINALE',
+  'Round of 16': 'HUITIÈMES DE FINALE'
+};
+const FIRST_ROUND_PREP_FR = {
+  'Final': 'à la',
+  'Semifinal': 'aux',
+  'Quarterfinal': 'aux',
+  'Round of 16': 'aux'
+};
+
+function renderRulesView(){
+  const container = document.getElementById('rulesContainer');
+  if(!container || !state.knockout) return;
+  const n = state.teams.length;
+  const groups = state.groups;
+  const sizes = groups.map(g => g.teamIds.length);
+  const sizesUneven = new Set(sizes).size > 1;
+  const cap = state.config.pointsPerGame + 2;
+  const k = state.knockout; // { rounds, numGroups, bracketSize, wildcardCount }
+  const firstRoundName = k.rounds[0].name;
+  const firstRoundNoun = FIRST_ROUND_NOUN_FR[firstRoundName] || firstRoundName.toUpperCase();
+  const firstRoundPrep = FIRST_ROUND_PREP_FR[firstRoundName] || 'aux';
+
+  const groupsListHtml = groups.map(g =>
+    `<li><strong>${escapeHtml(g.name)}</strong> : ${g.teamIds.length} équipes (${g.teamIds.length - 1} match${g.teamIds.length - 1 > 1 ? 's' : ''} de poule chacune)</li>`
+  ).join('');
+
+  let qualifHtml = `Le top 2 de chaque groupe (${k.numGroups} groupe${k.numGroups>1?'s':''})`;
+  if(k.wildcardCount > 0){
+    qualifHtml += ` + les <strong>${k.wildcardCount} meilleures équipes restantes</strong> (peu importe si elles sont 3e, 4e... de leur groupe — des « wildcards » classées toutes ensemble)`;
+  }
+  qualifHtml += ` avancent ${firstRoundPrep} ${firstRoundNoun} (${k.bracketSize} équipes).`;
+  if(k.wildcardCount === 0 && k.numGroups > 1){
+    qualifHtml += ` Pas besoin de wildcard ici : ${k.numGroups} groupes × 2 qualifiés tombe déjà sur un nombre rond pour le tableau.`;
+  }
+
+  let critereHtml;
+  if(sizesUneven){
+    critereHtml = `
+      <p>⚠️ Avec <strong>${n} équipes</strong> réparties en <strong>${groups.length} groupes</strong>, la division n'est pas parfaitement égale : ${sizes.join(' / ')} équipes selon le groupe. Une équipe d'un groupe à ${Math.max(...sizes)} joue donc <strong>${Math.max(...sizes)-1} matchs</strong> de poule, contre <strong>${Math.min(...sizes)-1}</strong> pour une équipe d'un groupe à ${Math.min(...sizes)} équipes.</p>
+      <p>Sans correction, l'équipe qui joue le plus de matchs aurait plus d'occasions d'accumuler des victoires/points — un avantage qui n'a rien à voir avec son niveau de jeu. C'est pourquoi le classement (notamment pour départager les places de wildcard entre groupes) utilise des <strong>pourcentages</strong> plutôt que des totaux bruts :</p>
+    `;
+  } else if(groups.length > 1){
+    critereHtml = `
+      <p>Ici, les ${groups.length} groupes ont tous la même taille (${sizes[0]} équipes), donc chaque équipe joue exactement le même nombre de matchs de poule. Le classement par pourcentage donne donc le même résultat qu'un classement par totaux bruts — mais la règle s'applique automatiquement si jamais les groupes deviennent inégaux (en cas d'ajout/retrait d'une équipe) :</p>
+    `;
+  } else {
+    critereHtml = `
+      <p>Avec un seul groupe, tout le monde joue le même nombre de matchs — le classement par pourcentage ne change donc rien ici, mais la règle s'applique automatiquement dès que le tournoi compte plusieurs groupes :</p>
+    `;
+  }
+
+  const wildcardNote = k.wildcardCount > 0
+    ? `<p style="margin-top:10px;color:var(--muted);font-size:13px;">Ce critère compte surtout pour départager les <strong>${k.wildcardCount} places de wildcard</strong> entre les ${k.numGroups} groupes (onglet Standings, tableau « Wildcard Ranking ») puisque ces équipes ne se sont jamais affrontées directement — et elles ne sortent pas forcément toutes de la 3e place : un groupe plus grand peut repêcher un 4e.</p>`
+    : '';
+
+  let readyGoHtml;
+  if(k.numGroups === 1){
+    readyGoHtml = `Avec un seul groupe, la finale ne peut être fixée qu'une fois que <strong>toutes les équipes</strong> ont terminé leurs matchs de poule (il n'y a qu'un seul groupe à attendre).`;
+  } else {
+    readyGoHtml = `Avec ${k.numGroups} groupes, chaque match du premier tour (${firstRoundNoun}) ne dépend que de <strong>2 groupes</strong> précis. Dès que ces 2 groupes terminent leurs matchs de poule, le match correspondant est assigné à un terrain libre <strong>immédiatement</strong> — sans attendre les autres groupes.`;
+    if(k.wildcardCount > 0){
+      readyGoHtml += ` Seuls les matchs de wildcards doivent attendre que les ${k.numGroups} groupes soient tous complets, puisqu'il faut comparer les équipes restantes entre tous les groupes.`;
+    } else {
+      readyGoHtml += ` Il n'y a pas de wildcard ici, donc tous les matchs démarrent dès que leurs 2 groupes respectifs sont prêts.`;
+    }
+  }
+
+  container.innerHTML = `
+    <div class="card">
+      <h2>📜 Format — ${n} équipes</h2>
+      <p>Poules en round robin (tout le monde affronte tout le monde dans son groupe), puis phase éliminatoire en matchs à élimination directe (best of 3 sets, ${state.config.pointsPerGame} points par set, cap à ${cap}).</p>
+      <ul style="margin:8px 0 0 18px;padding:0;color:var(--muted);font-size:13px;line-height:1.6;">
+        ${groupsListHtml}
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>🏅 Qualification pour l'élimination</h2>
+      <p>${qualifHtml}</p>
+    </div>
+
+    <div class="card">
+      <h2>⚖️ Pourquoi le classement utilise des %</h2>
+      ${critereHtml}
+      <ul style="margin:8px 0 0 18px;padding:0;line-height:1.6;">
+        <li>1. % de victoires (victoires / matchs joués)</li>
+        <li>2. Différentiel de sets par match joué</li>
+        <li>3. Différentiel de points par match joué</li>
+        <li>4. Ordre alphabétique (cas d'égalité parfaite)</li>
+      </ul>
+      ${wildcardNote}
+    </div>
+
+    <div class="card">
+      <h2>🚦 « Match prêt, go » — terrains toujours occupés</h2>
+      <p>${readyGoHtml}</p>
+    </div>
+  `;
+}
+
+/* ===================== RENDER: EXPORT ===================== */
+function buildExportText(){
+  const lines = [];
+  lines.push('BEACH VOLLEYBALL TOURNAMENT — STANDINGS SUMMARY');
+  lines.push('Teams: ' + state.teams.length + ' | Courts: ' + state.config.numCourts + ' | Points per game: ' + state.config.pointsPerGame + ' (cap ' + (state.config.pointsPerGame+2) + ') | Best of 3');
+  lines.push('='.repeat(50));
+
+  const standingsMap = getAllGroupStandings();
+  state.groups.forEach(group=>{
+    lines.push('');
+    lines.push(group.name.toUpperCase());
+    lines.push('-'.repeat(30));
+    standingsMap[group.id].forEach((s,i)=>{
+      lines.push(`${i+1}. ${teamName(s.teamId)}  W${s.mw}-L${s.ml}  Games ${s.gw}-${s.gl}  Pts ${s.pf}-${s.pa} (${s.pf-s.pa>=0?'+':''}${s.pf-s.pa})`);
+    });
+  });
+
+  const wildcardCount = state.knockout ? state.knockout.wildcardCount : 0;
+  if(wildcardCount > 0){
+    lines.push('');
+    lines.push('WILDCARD RANKING (top ' + wildcardCount + ' advance)');
+    lines.push('-'.repeat(30));
+    getAllRemainingTeamsRanked().forEach((s,i)=>{
+      lines.push(`${i+1}. ${teamName(s.teamId)} (${groupName(findTeamGroupId(s.teamId))}, ${s.rankInGroup}e)  W${s.mw}-L${s.ml}  Pts ${s.pf}-${s.pa}`);
+    });
+  }
+
+  if(state.knockout){
+    lines.push('');
+    lines.push('KNOCKOUT STAGE');
+    lines.push('='.repeat(50));
+    state.knockout.rounds.forEach(round=>{
+      lines.push('');
+      lines.push(round.name.toUpperCase());
+      round.matchIds.map(findMatchById).forEach(m=>{
+        const t1 = m.team1Id ? teamName(m.team1Id) : 'TBD';
+        const t2 = m.team2Id ? teamName(m.team2Id) : 'TBD';
+        const scores = m.games.filter(g=>gameWinner(g)).map(g=>g.team1+'-'+g.team2).join(', ');
+        const result = m.winnerId ? `→ Winner: ${teamName(m.winnerId)}` : '';
+        lines.push(`${t1} vs ${t2}  ${scores ? '['+scores+']' : ''}  ${result}`);
+      });
+    });
+  }
+
+  if(state.stage === 'done'){
+    const finalRound = state.knockout.rounds[state.knockout.rounds.length-1];
+    const finalMatch = findMatchById(finalRound.matchIds[0]);
+    lines.push('');
+    lines.push('='.repeat(50));
+    lines.push('🏆 CHAMPION: ' + teamName(finalMatch.winnerId));
+  }
+
+  return lines.join('\n');
+}
+
+function renderExportView(){
+  document.getElementById('export-text').value = buildExportText();
+}
+/* ===================== TABS ===================== */
+function switchTab(tabName){
+  state.activeTab = tabName;
+  document.querySelectorAll('.tabbar button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.tab === tabName);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p=>{
+    p.classList.toggle('hidden', p.id !== 'tab-' + tabName);
+  });
+  saveState();
+}
+
+/* ===================== RESET ===================== */
+function resetTournament(){
+  const ok = confirm('This will erase all teams, scores and the bracket. Are you sure?');
+  if(!ok) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = defaultState();
+  showSetupScreen();
+  renderSetupScreen();
+  showToast('Tournament reset');
+}
+
+/* ===================== GLOBAL EVENT WIRING ===================== */
+function wireGlobalEvents(){
+  wireSetupEvents();
+
+  document.querySelectorAll('.tabbar button').forEach(b=>{
+    b.addEventListener('click', ()=> switchTab(b.dataset.tab));
+  });
+  if(state.activeTab) switchTab(state.activeTab);
+
+  document.getElementById('closeMatchModalBtn').addEventListener('click', closeMatchModal);
+  document.getElementById('matchModalOverlay').addEventListener('click', e=>{
+    if(e.target.id === 'matchModalOverlay') closeMatchModal();
+  });
+  document.getElementById('clearMatchBtn').addEventListener('click', clearCurrentMatch);
+  document.getElementById('saveMatchBtn').addEventListener('click', saveCurrentMatch);
+
+  document.getElementById('resetTournamentBtn').addEventListener('click', resetTournament);
+
+  document.getElementById('copyExportBtn').addEventListener('click', ()=>{
+    const textarea = document.getElementById('export-text');
+    textarea.select();
+    try{
+      navigator.clipboard.writeText(textarea.value).then(()=> showToast('Copied to clipboard!'));
+    }catch(e){
+      document.execCommand('copy');
+      showToast('Copied to clipboard!');
+    }
+  });
+}
+
+
+
+
+
+
+
+
+</script>
+</body>
+</html>
