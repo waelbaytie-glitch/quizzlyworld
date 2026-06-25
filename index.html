@@ -337,7 +337,8 @@
     background:var(--panel2);border-radius:10px;padding:10px 12px;margin-bottom:8px;
     border:1px solid #1d3a2680;
   }
-  .song-item.a-jouer{border-color:var(--accent);}
+  .song-item.joue{opacity:.55;}
+  .song-item.joue .song-title{text-decoration:line-through;}
   .song-item input[type=checkbox]{width:20px;height:20px;flex-shrink:0;accent-color:var(--accent);cursor:pointer;}
   .song-item .song-info{flex:1;min-width:0;}
   .song-item .song-title{font-weight:600;font-size:14px;}
@@ -513,6 +514,7 @@
 
       <div class="card">
         <h2>🎶 Playlist suggérée <span id="songsCount" style="color:var(--muted);font-size:11px;font-weight:400;"></span></h2>
+        <div style="font-size:11px;color:var(--muted);margin:-4px 0 10px;">Coche une chanson une fois qu'elle a été jouée.</div>
         <div id="songsListContainer"></div>
       </div>
     </div>
@@ -618,7 +620,7 @@ function defaultState(){
     matches: [],      // see createMatch()
     courts: [],      // {id, name, status:'available'|'busy', matchId:null}
     knockout: null,  // bracket structure once generated
-    songs: DEFAULT_SONGS.map((s, i) => ({ id: uid('song'), suggererPar: s.suggererPar, nom: s.nom, artiste: s.artiste, aJouer: false, ts: i })), // {id, suggererPar, nom, artiste, aJouer} — music suggestions
+    songs: DEFAULT_SONGS.map((s, i) => ({ id: uid('song'), suggererPar: s.suggererPar, nom: s.nom, artiste: s.artiste, joue: false, ts: i })), // {id, suggererPar, nom, artiste, joue} — music suggestions; joue=true means already played
     activeTab: 'courts'
   };
 }
@@ -736,7 +738,7 @@ function initFirebase(){
         // First time this Firebase database is used: seed it with the suggestions
         // already collected before the shared list existed, so they aren't lost.
         // The push() calls below re-trigger this same listener with real data.
-        DEFAULT_SONGS.forEach((s, i) => songsRef.push(Object.assign({ aJouer: false, ts: i }, s)));
+        DEFAULT_SONGS.forEach((s, i) => songsRef.push(Object.assign({ joue: false, ts: i }, s)));
         return;
       }
       state.songs = Object.keys(val || {})
@@ -790,7 +792,7 @@ function addSong(){
   const nom = nomInput.value.trim();
   const artiste = artisteInput.value.trim();
   if(!nom || !artiste){ showToast('Ajoute au moins le titre et l\'artiste'); return; }
-  const song = { suggererPar: parInput.value.trim() || 'Anonyme', nom, artiste, aJouer: false, ts: Date.now() };
+  const song = { suggererPar: parInput.value.trim() || 'Anonyme', nom, artiste, joue: false, ts: Date.now() };
   if(firebaseReady){
     songsRef.push(song);
   } else {
@@ -803,14 +805,14 @@ function addSong(){
   showToast('🎵 Chanson ajoutée à la playlist !');
 }
 
-function toggleSongAJouer(id){
+function toggleSongJoue(id){
   const song = state.songs.find(s => s.id === id);
   if(!song) return;
-  const aJouer = !song.aJouer;
+  const joue = !song.joue;
   if(firebaseReady){
-    songsRef.child(id).update({ aJouer });
+    songsRef.child(id).update({ joue });
   } else {
-    song.aJouer = aJouer;
+    song.joue = joue;
     saveState();
     renderMusicView();
   }
@@ -830,15 +832,15 @@ function renderMusicView(){
   const container = document.getElementById('songsListContainer');
   if(!container) return;
   const countEl = document.getElementById('songsCount');
-  const aJouerCount = state.songs.filter(s => s.aJouer).length;
+  const aJouerCount = state.songs.filter(s => !s.joue).length;
   if(countEl) countEl.textContent = `(${state.songs.length} suggestion${state.songs.length>1?'s':''}, ${aJouerCount} à jouer)`;
   if(state.songs.length === 0){
     container.innerHTML = '<div class="empty-note">Aucune suggestion pour le moment — sois le premier !</div>';
     return;
   }
   container.innerHTML = state.songs.map(s => `
-    <div class="song-item ${s.aJouer ? 'a-jouer' : ''}">
-      <input type="checkbox" data-song-id="${s.id}" class="song-checkbox" ${s.aJouer ? 'checked' : ''}>
+    <div class="song-item ${s.joue ? 'joue' : ''}">
+      <input type="checkbox" data-song-id="${s.id}" class="song-checkbox" ${s.joue ? 'checked' : ''} title="Cocher = déjà jouée">
       <div class="song-info">
         <div class="song-title">${escapeHtml(s.nom)} <span class="song-artiste">— ${escapeHtml(s.artiste)}</span></div>
         <div class="song-meta">suggéré par ${escapeHtml(s.suggererPar)}</div>
@@ -847,7 +849,7 @@ function renderMusicView(){
     </div>
   `).join('');
   container.querySelectorAll('.song-checkbox').forEach(cb=>{
-    cb.addEventListener('change', e => toggleSongAJouer(e.target.dataset.songId));
+    cb.addEventListener('change', e => toggleSongJoue(e.target.dataset.songId));
   });
   container.querySelectorAll('[data-remove-id]').forEach(btn=>{
     btn.addEventListener('click', e => removeSong(e.target.dataset.removeId));
