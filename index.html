@@ -7,6 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Firebase: powers the shared "Musique" tab so suggestions sync live across every
+     phone, instead of staying stuck in each visitor's own browser storage. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
   :root{
     /* Sampled straight from the PCL logo (oval green #104735 / #013415, gold #FEC532)
@@ -328,6 +332,20 @@
   .empty-note{color:var(--muted);font-size:13px;text-align:center;padding:20px;}
   .scroll-x{overflow-x:auto;}
 
+  .song-item{
+    display:flex;align-items:center;gap:10px;
+    background:var(--panel2);border-radius:10px;padding:10px 12px;margin-bottom:8px;
+    border:1px solid #1d3a2680;
+  }
+  .song-item.a-jouer{border-color:var(--accent);}
+  .song-item input[type=checkbox]{width:20px;height:20px;flex-shrink:0;accent-color:var(--accent);cursor:pointer;}
+  .song-item .song-info{flex:1;min-width:0;}
+  .song-item .song-title{font-weight:600;font-size:14px;}
+  .song-item .song-title .song-artiste{color:var(--muted);font-weight:400;}
+  .song-item .song-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+  .song-item .btn-remove{background:transparent;color:var(--muted);font-size:16px;padding:4px 8px;flex-shrink:0;}
+  .song-item .btn-remove:hover{color:var(--red);}
+
   .app-footer{
     display:flex;
     align-items:center;
@@ -344,7 +362,7 @@
 
 <div class="container">
   <header class="app-header">
-    <div class="pcl-badge"><img src="PCL Logo - with Construction.png" alt="PCL Construction"></div>
+    <div class="pcl-badge"><img src="pcl-logo.png" alt="PCL Construction"></div>
     <h1>🏐 Beach Volleyball <span class="amp">&amp; BBQ</span></h1>
     <div class="sub">Peu importe ton niveau, l'important c'est de s'amuser ! 🌴</div>
   </header>
@@ -400,6 +418,7 @@
       <button data-tab="matches">Matches</button>
       <button data-tab="standings">Standings</button>
       <button data-tab="bracket">Bracket</button>
+      <button data-tab="music">Musique</button>
       <button data-tab="rules">Règles</button>
       <button data-tab="export">Export</button>
     </div>
@@ -430,6 +449,35 @@
       </div>
     </div>
 
+    <div id="tab-music" class="tab-panel hidden">
+      <div class="card">
+        <h2>🎵 Suggérer une chanson</h2>
+        <div class="field-row">
+          <div class="field">
+            <label for="songSuggererPar">Suggéré par</label>
+            <input type="text" id="songSuggererPar" placeholder="Ton nom" maxlength="40">
+          </div>
+          <div class="field">
+            <label for="songNom">Nom de la chanson</label>
+            <input type="text" id="songNom" placeholder="Titre" maxlength="80">
+          </div>
+          <div class="field">
+            <label for="songArtiste">Artiste</label>
+            <input type="text" id="songArtiste" placeholder="Artiste" maxlength="80">
+          </div>
+        </div>
+        <div class="actions-row" style="justify-content:flex-start;margin-top:0;">
+          <button class="btn-primary" id="addSongBtn">+ Ajouter à la playlist</button>
+        </div>
+        <div id="songsSyncNote" style="font-size:11px;color:var(--muted);margin-top:8px;"></div>
+      </div>
+
+      <div class="card">
+        <h2>🎶 Playlist suggérée <span id="songsCount" style="color:var(--muted);font-size:11px;font-weight:400;"></span></h2>
+        <div id="songsListContainer"></div>
+      </div>
+    </div>
+
     <div id="tab-rules" class="tab-panel hidden">
       <div id="rulesContainer"></div>
     </div>
@@ -452,7 +500,7 @@
 
 <footer class="app-footer">
   <span>Présenté par</span>
-  <img src="PCL Logo - with Construction.png" alt="PCL Construction">
+  <img src="pcl-logo.png" alt="PCL Construction">
 </footer>
 
 <!-- ===================== MATCH MODAL ===================== -->
@@ -499,6 +547,28 @@ const DEFAULT_TEAMS = [
   { name: 'Hard Hat Hitters', players: ['Jaâfar Ziha', 'Frederik Marion', 'Christopher Roa-Quispe', 'Yves Larocque'] }
 ];
 
+const DEFAULT_SONGS = [
+  { suggererPar: 'Can UGURAL', nom: 'Stereo Love', artiste: '' },
+  { suggererPar: 'Victor Hubert', nom: '24 (Turn It Up)', artiste: 'ANOTR and Kurtis Wells' },
+  { suggererPar: 'Victor Hubert', nom: 'Ma quale idea', artiste: "Pino d'Angio" },
+  { suggererPar: 'Victor Hubert', nom: "Histoire d'un soir", artiste: 'Bibi Flash and Blutch' },
+  { suggererPar: 'Victor Hubert', nom: 'Music Sounds Better with You', artiste: 'Stardust' },
+  { suggererPar: 'Victor Hubert', nom: 'Freed From Desire', artiste: 'Gala' },
+  { suggererPar: 'Victor Hubert', nom: 'One More Time', artiste: 'Daft Punk' },
+  { suggererPar: 'Victor Hubert', nom: 'Walking on a Dream', artiste: 'Empire of the Sun' },
+  { suggererPar: 'Victor Hubert', nom: 'Fio Maravilha', artiste: 'Bon Entendeur' },
+  { suggererPar: 'Victor Hubert', nom: '2 Spririts', artiste: 'Jonk & Spook' },
+  { suggererPar: 'Victor Hubert', nom: 'Into The Groove', artiste: 'Madonna (Pablo Bozzi)' },
+  { suggererPar: 'Victor Hubert', nom: 'Holiday', artiste: 'Madonna' },
+  { suggererPar: 'Victor Hubert', nom: 'Me Gustas Tu', artiste: 'Manu Chao' },
+  { suggererPar: 'Victor Alexandre Frings-Morales', nom: 'Hell n Back', artiste: 'Bakar' },
+  { suggererPar: 'Victor Alexandre Frings-Morales', nom: 'wash my sins away', artiste: 'berlioz' },
+  { suggererPar: 'Victor Alexandre Frings-Morales', nom: "YOU'RE THE ONE", artiste: 'KAYTRANADA' },
+  { suggererPar: 'Victor Alexandre Frings-Morales', nom: 'La seule', artiste: 'Bigflo et Oli' },
+  { suggererPar: 'Victor Alexandre Frings-Morales', nom: 'Casa de Bamba', artiste: 'Martinho Da Vila' },
+  { suggererPar: 'Alex Xin', nom: 'Bubble Gum', artiste: 'New Jeans' }
+];
+
 function defaultState(){
   return {
     stage: 'setup', // setup | groups | knockout | done
@@ -508,6 +578,7 @@ function defaultState(){
     matches: [],      // see createMatch()
     courts: [],      // {id, name, status:'available'|'busy', matchId:null}
     knockout: null,  // bracket structure once generated
+    songs: DEFAULT_SONGS.map((s, i) => ({ id: uid('song'), suggererPar: s.suggererPar, nom: s.nom, artiste: s.artiste, aJouer: false, ts: i })), // {id, suggererPar, nom, artiste, aJouer} — music suggestions
     activeTab: 'courts'
   };
 }
@@ -533,10 +604,129 @@ function showToast(msg){
   t._timer = setTimeout(()=> t.classList.remove('show'), 1800);
 }
 
+/* ===================== MUSIC SUGGESTIONS (shared via Firebase) ===================== */
+// Fill these in with your free Firebase project's config (Firebase console → Project
+// settings → General → "Your apps" → SDK setup and configuration) to make the
+// Musique tab sync live across every visitor's phone. Until then, it falls back to
+// this browser's own local storage (same as the rest of the app, but not shared).
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT"
+};
+
+let songsRef = null;
+let firebaseReady = false;
+
+function initFirebase(){
+  const note = document.getElementById('songsSyncNote');
+  if(firebaseConfig.apiKey === 'YOUR_API_KEY'){
+    if(note) note.textContent = '⚠️ Mode local : configure Firebase (voir le commentaire dans le code) pour que tout le monde voie les mêmes suggestions.';
+    return;
+  }
+  try{
+    firebase.initializeApp(firebaseConfig);
+    songsRef = firebase.database().ref('songs');
+    firebaseReady = true;
+    if(note) note.textContent = '🟢 Synchronisé en direct — visible par tout le monde.';
+    songsRef.on('value', snapshot=>{
+      const val = snapshot.val();
+      if(!val && DEFAULT_SONGS.length){
+        // First time this Firebase database is used: seed it with the suggestions
+        // already collected before the shared list existed, so they aren't lost.
+        // The push() calls below re-trigger this same listener with real data.
+        DEFAULT_SONGS.forEach((s, i) => songsRef.push(Object.assign({ aJouer: false, ts: i }, s)));
+        return;
+      }
+      state.songs = Object.keys(val || {})
+        .map(key => Object.assign({ id: key }, val[key]))
+        .sort((a,b)=> (a.ts||0) - (b.ts||0));
+      renderMusicView();
+    });
+  }catch(e){
+    console.error('Firebase init failed', e);
+    if(note) note.textContent = '⚠️ Connexion à Firebase impossible — mode local pour l\'instant.';
+  }
+}
+
+function addSong(){
+  const parInput = document.getElementById('songSuggererPar');
+  const nomInput = document.getElementById('songNom');
+  const artisteInput = document.getElementById('songArtiste');
+  const nom = nomInput.value.trim();
+  const artiste = artisteInput.value.trim();
+  if(!nom || !artiste){ showToast('Ajoute au moins le titre et l\'artiste'); return; }
+  const song = { suggererPar: parInput.value.trim() || 'Anonyme', nom, artiste, aJouer: false, ts: Date.now() };
+  if(firebaseReady){
+    songsRef.push(song);
+  } else {
+    state.songs.push(Object.assign({ id: uid('song') }, song));
+    saveState();
+    renderMusicView();
+  }
+  nomInput.value = '';
+  artisteInput.value = '';
+  showToast('🎵 Chanson ajoutée à la playlist !');
+}
+
+function toggleSongAJouer(id){
+  const song = state.songs.find(s => s.id === id);
+  if(!song) return;
+  const aJouer = !song.aJouer;
+  if(firebaseReady){
+    songsRef.child(id).update({ aJouer });
+  } else {
+    song.aJouer = aJouer;
+    saveState();
+    renderMusicView();
+  }
+}
+
+function removeSong(id){
+  if(firebaseReady){
+    songsRef.child(id).remove();
+  } else {
+    state.songs = state.songs.filter(s => s.id !== id);
+    saveState();
+    renderMusicView();
+  }
+}
+
+function renderMusicView(){
+  const container = document.getElementById('songsListContainer');
+  if(!container) return;
+  const countEl = document.getElementById('songsCount');
+  const aJouerCount = state.songs.filter(s => s.aJouer).length;
+  if(countEl) countEl.textContent = `(${state.songs.length} suggestion${state.songs.length>1?'s':''}, ${aJouerCount} à jouer)`;
+  if(state.songs.length === 0){
+    container.innerHTML = '<div class="empty-note">Aucune suggestion pour le moment — sois le premier !</div>';
+    return;
+  }
+  container.innerHTML = state.songs.map(s => `
+    <div class="song-item ${s.aJouer ? 'a-jouer' : ''}">
+      <input type="checkbox" data-song-id="${s.id}" class="song-checkbox" ${s.aJouer ? 'checked' : ''}>
+      <div class="song-info">
+        <div class="song-title">${escapeHtml(s.nom)} <span class="song-artiste">— ${escapeHtml(s.artiste)}</span></div>
+        <div class="song-meta">suggéré par ${escapeHtml(s.suggererPar)}</div>
+      </div>
+      <button class="btn-remove" data-remove-id="${s.id}" title="Retirer">✕</button>
+    </div>
+  `).join('');
+  container.querySelectorAll('.song-checkbox').forEach(cb=>{
+    cb.addEventListener('change', e => toggleSongAJouer(e.target.dataset.songId));
+  });
+  container.querySelectorAll('[data-remove-id]').forEach(btn=>{
+    btn.addEventListener('click', e => removeSong(e.target.dataset.removeId));
+  });
+}
+
 /* ===================== INIT ===================== */
 function init(){
   const loaded = loadState();
   state = loaded || defaultState();
+  if(!state.songs) state.songs = [];
+  initFirebase();
   if(state.stage === 'setup'){
     renderSetupScreen();
   } else {
@@ -1247,6 +1437,7 @@ function renderAll(){
   renderStandingsView();
   renderBracketView();
   renderRulesView();
+  renderMusicView();
   renderExportView();
 }
 
@@ -1715,6 +1906,8 @@ function wireGlobalEvents(){
   document.getElementById('saveMatchBtn').addEventListener('click', saveCurrentMatch);
 
   document.getElementById('resetTournamentBtn').addEventListener('click', resetTournament);
+
+  document.getElementById('addSongBtn').addEventListener('click', addSong);
 
   document.getElementById('copyExportBtn').addEventListener('click', ()=>{
     const textarea = document.getElementById('export-text');
