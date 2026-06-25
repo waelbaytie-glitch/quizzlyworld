@@ -381,7 +381,7 @@
       <h2>🔑 Qui es-tu ?</h2>
       <p style="color:var(--muted);font-size:13px;margin-bottom:18px;">Choisis ton rôle pour accéder au site.</p>
       <div class="actions-row" style="justify-content:center;margin-top:0;">
-        <button class="btn-primary" id="roleJoueurBtn">🏐 Joueur</button>
+        <button class="btn-secondary" id="roleJoueurBtn">🏐 Joueur</button>
         <button class="btn-secondary" id="roleAdminBtn">🛠️ Admin</button>
       </div>
       <div id="roleCodeRow" class="role-code-row hidden">
@@ -874,10 +874,21 @@ function showRoleScreen(){
   document.getElementById('player-waiting-screen').classList.add('hidden');
   document.getElementById('roleCodeRow').classList.add('hidden');
   document.getElementById('resetCodeRow').classList.add('hidden');
+  markRoleButtonSelected(null);
+}
+
+// Highlights whichever role button was just clicked (yellow, like the active tab)
+// so the user gets visual confirmation of which one they picked.
+function markRoleButtonSelected(role){
+  document.getElementById('roleJoueurBtn').classList.toggle('btn-primary', role === 'joueur');
+  document.getElementById('roleJoueurBtn').classList.toggle('btn-secondary', role !== 'joueur');
+  document.getElementById('roleAdminBtn').classList.toggle('btn-primary', role === 'admin');
+  document.getElementById('roleAdminBtn').classList.toggle('btn-secondary', role !== 'admin');
 }
 
 function chooseRole(role){
   pendingRole = role;
+  markRoleButtonSelected(role);
   document.getElementById('resetCodeRow').classList.add('hidden');
   document.getElementById('roleCodeRow').classList.remove('hidden');
   const input = document.getElementById('roleCodeInput');
@@ -1387,15 +1398,19 @@ function renderCourtSelect(match){
   sel.value = match.courtId || '';
   sel.disabled = !isAdmin();
   sel.onchange = ()=>{
+    // Re-fetch by id rather than using the closed-over `match` — a Firebase sync
+    // received while the modal was open could have replaced state.matches with a
+    // fresh array of objects, which would silently orphan the captured reference.
+    const m = findMatchById(match.id) || match;
     const newCourtId = sel.value || null;
-    const oldCourt = state.courts.find(c => c.id === match.courtId);
+    const oldCourt = state.courts.find(c => c.id === m.courtId);
     if(oldCourt){ oldCourt.status = 'available'; oldCourt.matchId = null; }
-    match.courtId = newCourtId;
+    m.courtId = newCourtId;
     if(newCourtId){
       const newCourt = state.courts.find(c => c.id === newCourtId);
       newCourt.status = 'busy';
-      newCourt.matchId = match.id;
-      if(match.status === 'upcoming') match.status = 'in_progress';
+      newCourt.matchId = m.id;
+      if(m.status === 'upcoming') m.status = 'in_progress';
     }
     saveState();
     renderCourtsView();
@@ -1430,14 +1445,19 @@ function renderGamesContainer(match){
   }
   container.querySelectorAll('.score-input').forEach(inp=>{
     inp.addEventListener('input', e=>{
+      // Re-fetch by id rather than mutating the closed-over `match` — a Firebase
+      // sync received while the modal was open could have replaced state.matches
+      // with a fresh array of objects, which would silently orphan this reference
+      // and drop every score typed afterwards.
+      const m = findMatchById(match.id) || match;
       const gi = Number(e.target.dataset.game);
       const teamKey = e.target.dataset.team;
-      match.games[gi][teamKey] = e.target.value; // '' for cleared — see blankGames()
-      recalcMatchStatus(match); // may free this match's court & advance the bracket
+      m.games[gi][teamKey] = e.target.value; // '' for cleared — see blankGames()
+      recalcMatchStatus(m); // may free this match's court & advance the bracket
       saveState();
-      updateGame3LockState(match); // toggle game-3 lock in place, no DOM rebuild
-      updateWinnerBanner(match);
-      renderCourtSelect(match); // reflect court freed/auto-filled while modal is open
+      updateGame3LockState(m); // toggle game-3 lock in place, no DOM rebuild
+      updateWinnerBanner(m);
+      renderCourtSelect(m); // reflect court freed/auto-filled while modal is open
     });
   });
 }
@@ -2132,11 +2152,17 @@ function performReset(){
 }
 
 function resetTournament(){
-  const ok = confirm('This will erase all teams, scores and the bracket. Are you sure?');
-  if(!ok) return;
+  // Even an Admin must type the reset code — it's a separate, deliberate action
+  // from normal admin editing, not something a misclick should be able to trigger.
+  const code = prompt('Code de réinitialisation requis :');
+  if(code === null) return; // cancelled
+  if(code.trim() !== RESET_CODE){
+    showToast('Code incorrect');
+    return;
+  }
   performReset();
   showStageScreen();
-  showToast('Tournament reset');
+  showToast('Tournoi réinitialisé pour tout le monde');
 }
 
 /* ===================== GLOBAL EVENT WIRING ===================== */
