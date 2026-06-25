@@ -2028,7 +2028,8 @@ function predictionBlockHtml(match){
     if(!myPick) return '';
     const winnerSide = match.winnerId === match.team1Id ? 'team1' : 'team2';
     const correct = myPick === winnerSide;
-    return `<div class="predict-block predict-result ${correct?'correct':'wrong'}">${correct ? '✅ Bon pronostic !' : '❌ Pronostic manqué'}</div>`;
+    const detail = total ? ` (${total} vote${total>1?'s':''} — ${pct('team1')}% / ${pct('team2')}%)` : '';
+    return `<div class="predict-block predict-result ${correct?'correct':'wrong'}">${correct ? '✅ Bon pronostic !' : '❌ Pronostic manqué'}${detail}</div>`;
   }
   return `
     <div class="predict-block">
