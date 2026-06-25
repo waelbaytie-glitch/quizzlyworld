@@ -147,7 +147,10 @@
     width:26px;height:26px;border-radius:50%;
     background:var(--accent);color:#163d1f;
     display:flex;align-items:center;justify-content:center;
-    font-size:12px;font-weight:700;flex-shrink:0;
+    font-size:14px;font-weight:700;flex-shrink:0;
+  }
+  .team-emoji-select{
+    width:48px;flex-shrink:0;font-size:16px;text-align:center;padding:6px 2px;
   }
   .players-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
   .players-grid input{font-size:12px;padding:6px 8px;}
@@ -245,6 +248,32 @@
   .match-card.in_progress .status-pill{background:var(--yellow);color:#23210a;}
   .match-card.upcoming .status-pill{background:var(--gray);color:#fff;}
   .match-score-mini{font-size:13px;font-weight:700;color:var(--accent);}
+  .predict-block{flex-basis:100%;}
+  .predict-row{display:flex;gap:6px;margin-top:6px;}
+  .predict-btn{
+    flex:1;font-size:11px;padding:7px 6px;background:var(--panel2);color:var(--text);
+    border:1px solid #24402f;border-radius:8px;cursor:pointer;
+  }
+  .predict-btn.picked{background:var(--accent);color:#163d1f;border-color:var(--accent);font-weight:700;}
+  .predict-total{font-size:10px;color:var(--muted);margin-top:4px;}
+  .predict-result{font-size:11px;font-weight:700;margin-top:6px;}
+  .predict-result.correct{color:var(--green);}
+  .predict-result.wrong{color:var(--muted);}
+
+  /* ---------- Mode Affichage (kiosk iPad) ---------- */
+  .display-mode .tabbar{display:none;}
+  .display-mode .predict-block{display:none;}
+  .display-mode .match-card{cursor:default !important;}
+  .display-mode .match-teams{font-size:18px;}
+  .display-mode .card h2{font-size:22px;}
+  .display-mode .card h3{font-size:19px;}
+  .display-mode .court-title{font-size:20px;}
+  .display-mode .court-status{font-size:13px;}
+  .display-mode .vs{font-size:20px;}
+  .display-mode .game-scores{font-size:16px;}
+  .display-mode .bracket-team{font-size:17px;padding:10px 14px;}
+  .display-mode table.standings{font-size:16px;}
+  .display-mode .app-header h1{font-size:28px;}
 
   /* ---------- Standings table ---------- */
   table.standings{width:100%;border-collapse:collapse;font-size:13px;}
@@ -308,6 +337,25 @@
   }
   .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
   .modal-close{background:var(--panel2);color:var(--text);width:32px;height:32px;border-radius:50%;font-size:16px;}
+
+  /* ---------- Champion celebration ---------- */
+  .champion-box{
+    text-align:center;position:relative;
+    background:linear-gradient(160deg,var(--panel),#0a2618);
+    border:1px solid var(--accent);
+    padding:30px 20px 26px;
+  }
+  .champion-box .modal-close{position:absolute;top:10px;right:10px;}
+  .champion-trophy{font-size:54px;line-height:1;animation:champion-bounce 1.4s ease-in-out infinite;}
+  @keyframes champion-bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+  .champion-title{font-weight:800;letter-spacing:2px;color:var(--accent);font-size:14px;margin-top:6px;}
+  .champion-emoji{font-size:64px;margin-top:14px;}
+  .champion-team-name{font-size:24px;font-weight:800;margin-top:6px;}
+  .champion-roster{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+  .champion-roster span{
+    font-size:13px;background:#0000002a;border-radius:20px;padding:6px 12px;color:var(--text);
+  }
+  #confettiCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:60;pointer-events:none;}
   .game-row{
     display:flex;align-items:center;gap:10px;
     background:var(--panel2);border-radius:10px;padding:10px;margin-bottom:8px;
@@ -369,7 +417,7 @@
 </head>
 <body>
 
-<div class="container">
+<div class="container" id="appContainer">
   <header class="app-header">
     <div class="pcl-badge"><img src="pcl-logo.png" alt="PCL Construction"></div>
     <h1>🏐 Beach Volleyball <span class="amp">&amp; BBQ</span></h1>
@@ -390,6 +438,7 @@
         <button class="btn-primary" id="roleCodeSubmitBtn">Valider</button>
       </div>
       <div class="role-reset-zone">
+        <button class="btn-secondary btn-small" id="displayModeBtn">📺 Mode Affichage (iPad)</button>
         <button class="btn-secondary btn-small" id="showResetRowBtn">⚠ Réinitialiser le tournoi</button>
         <div id="resetCodeRow" class="role-code-row hidden">
           <input type="password" id="resetCodeInput" placeholder="Code reset" inputmode="numeric" maxlength="6">
@@ -565,6 +614,19 @@
   </div>
 </div>
 
+<!-- ===================== CHAMPION CELEBRATION ===================== -->
+<div id="championScreenOverlay" class="modal-overlay hidden">
+  <div class="modal-box champion-box">
+    <button class="modal-close" id="closeChampionScreenBtn">✕</button>
+    <div class="champion-trophy">🏆</div>
+    <div class="champion-title">CHAMPION</div>
+    <div class="champion-emoji" id="championEmoji"></div>
+    <div class="champion-team-name" id="championTeamName"></div>
+    <div class="champion-roster" id="championRoster"></div>
+  </div>
+</div>
+<canvas id="confettiCanvas" class="hidden"></canvas>
+
 <div id="toast" class="toast"></div>
 
 <script>
@@ -575,6 +637,8 @@ const STORAGE_KEY = 'bvt_tournament_state_v1';
 function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
 
 var state = null;
+
+const EMOJI_CHOICES = ['🏐','🔥','⚡','🌴','🦁','🐯','🚀','🍉','🌺','🎯','🥥','🏆','😎','🦅','🐬','🌊','☀️','🎉','💪','🦈'];
 
 const DEFAULT_TEAMS = [
   { name: "Esti d'joueurs", players: ['Adrien Saycocie', 'Victor Hubert', 'Grégoire Bibaut', 'Can UGURAL'] },
@@ -615,12 +679,13 @@ function defaultState(){
   return {
     stage: 'setup', // setup | groups | knockout | done
     config: { numTeams: DEFAULT_TEAMS.length, numCourts: 5, pointsPerGame: 15, gamesToWinMatch: 2 },
-    teams: DEFAULT_TEAMS.map(t => ({ id: uid('team'), name: t.name, players: t.players.slice() })),
+    teams: DEFAULT_TEAMS.map(t => ({ id: uid('team'), name: t.name, players: t.players.slice(), emoji: '' })),
     groups: [],      // {id, name, teamIds:[]}
     matches: [],      // see createMatch()
     courts: [],      // {id, name, status:'available'|'busy', matchId:null}
     knockout: null,  // bracket structure once generated
     songs: DEFAULT_SONGS.map((s, i) => ({ id: uid('song'), suggererPar: s.suggererPar, nom: s.nom, artiste: s.artiste, joue: false, ts: i })), // {id, suggererPar, nom, artiste, joue} — music suggestions; joue=true means already played
+    predictions: {}, // { [matchId]: { [voterId]: 'team1'|'team2' } } — synced separately, see initFirebase()
     activeTab: 'courts'
   };
 }
@@ -661,6 +726,19 @@ const firebaseConfig = {
 
 let songsRef = null;
 let firebaseReady = false;
+
+let predictionsRef = null;
+let predictionsReady = false;
+const VOTER_ID_KEY = 'bvt_voter_id_v1';
+function getVoterId(){
+  let id = null;
+  try{ id = localStorage.getItem(VOTER_ID_KEY); }catch(e){}
+  if(!id){
+    id = uid('voter');
+    try{ localStorage.setItem(VOTER_ID_KEY, id); }catch(e){}
+  }
+  return id;
+}
 
 let tournamentRef = null;
 let tournamentReady = false;
@@ -747,6 +825,13 @@ function initFirebase(){
       renderMusicView();
     });
 
+    predictionsRef = firebase.database().ref('predictions');
+    predictionsReady = true;
+    predictionsRef.on('value', snapshot=>{
+      state.predictions = snapshot.val() || {};
+      renderMatchesView();
+    });
+
     tournamentRef = firebase.database().ref('tournament');
     tournamentReady = true;
     tournamentRef.on('value', snapshot=>{
@@ -771,12 +856,29 @@ function initFirebase(){
       if(incomingJSON === lastSyncedTournamentJSON) return; // our own echo — already up to date
       lastSyncedTournamentJSON = incomingJSON;
       lastAppliedUpdatedAt = val.updatedAt || 0;
+      // Snapshot before overwriting state.matches wholesale, so devices that didn't
+      // make the edit themselves (e.g. players watching) still get the confetti /
+      // champion reveal — comparing match ids+status, since the incoming objects
+      // are brand new instances even when nothing meaningful changed for them.
+      const prevStage = state.stage;
+      const prevCompletedNonGroupIds = new Set(
+        (state.matches || []).filter(m => m.stage !== 'group' && m.status === 'completed').map(m => m.id)
+      );
       TOURNAMENT_SYNC_FIELDS.forEach(k => {
         let v = val[k];
         if(v == null && TOURNAMENT_ARRAY_FIELDS.includes(k)) v = [];
         state[k] = v;
       });
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+      if(prevStage !== 'done' && state.stage === 'done'){
+        launchConfetti({ big: true });
+        showChampionScreen();
+      } else {
+        const newlyCompletedKnockout = (state.matches || []).some(m =>
+          m.stage !== 'group' && m.status === 'completed' && !prevCompletedNonGroupIds.has(m.id)
+        );
+        if(newlyCompletedKnockout) launchConfetti({ big: false });
+      }
       if(currentRole) showStageScreen();
     });
   }catch(e){
@@ -877,6 +979,7 @@ function showRoleScreen(){
   document.getElementById('roleCodeRow').classList.add('hidden');
   document.getElementById('resetCodeRow').classList.add('hidden');
   markRoleButtonSelected(null);
+  stopDisplayCycle();
 }
 
 // Highlights whichever role button was just clicked (yellow, like the active tab)
@@ -965,6 +1068,7 @@ function showStageScreen(){
     setupEl.classList.add('hidden');
     tourEl.classList.add('hidden');
     waitEl.classList.remove('hidden');
+    stopDisplayCycle();
     return;
   }
   waitEl.classList.add('hidden');
@@ -977,6 +1081,11 @@ function showStageScreen(){
     tourEl.classList.remove('hidden');
     renderAll();
   }
+  if(currentRole === 'display'){
+    startDisplayCycle();
+  } else {
+    stopDisplayCycle();
+  }
 }
 
 /* ===================== INIT ===================== */
@@ -984,6 +1093,8 @@ function init(){
   const loaded = loadState();
   state = loaded || defaultState();
   if(!state.songs) state.songs = [];
+  if(!state.predictions) state.predictions = {};
+  state.teams.forEach(t => { if(t.emoji == null) t.emoji = ''; });
   initFirebase();
   wireGlobalEvents();
   try{ currentRole = localStorage.getItem(ROLE_KEY); }catch(e){ currentRole = null; }
@@ -1012,7 +1123,7 @@ function ensureTeamsArray(n){
   const teams = state.teams;
   while(teams.length < n){
     const idx = teams.length + 1;
-    teams.push({ id: uid('team'), name: 'Team ' + idx, players: ['', '', '', ''] });
+    teams.push({ id: uid('team'), name: 'Team ' + idx, players: ['', '', '', ''], emoji: '' });
   }
   while(teams.length > n){
     teams.pop();
@@ -1039,7 +1150,11 @@ function renderTeamList(){
     item.className = 'team-item';
     item.innerHTML = `
       <div class="team-name-row">
-        <div class="team-badge">${i+1}</div>
+        <div class="team-badge">${escapeHtml(team.emoji) || (i+1)}</div>
+        <select class="team-emoji-select" data-idx="${i}">
+          <option value="">—</option>
+          ${EMOJI_CHOICES.map(e=>`<option value="${e}" ${team.emoji===e?'selected':''}>${e}</option>`).join('')}
+        </select>
         <input type="text" class="team-name-input" data-idx="${i}" value="${escapeAttr(team.name)}" placeholder="Team name">
       </div>
       <div class="players-grid">
@@ -1052,6 +1167,15 @@ function renderTeamList(){
     inp.addEventListener('input', e=>{
       state.teams[Number(e.target.dataset.idx)].name = e.target.value;
       saveState();
+    });
+  });
+  container.querySelectorAll('.team-emoji-select').forEach(sel=>{
+    sel.addEventListener('change', e=>{
+      const i = Number(e.target.dataset.idx);
+      state.teams[i].emoji = e.target.value;
+      saveState();
+      const badge = container.children[i].querySelector('.team-badge');
+      if(badge) badge.textContent = e.target.value || String(i+1);
     });
   });
   container.querySelectorAll('.player-input').forEach(inp=>{
@@ -1317,7 +1441,7 @@ function isGame3Unlocked(match){
 
 function findMatchById(id){ return state.matches.find(m => m.id === id); }
 function findTeamById(id){ return state.teams.find(t => t.id === id); }
-function teamName(id){ const t = findTeamById(id); return t ? t.name : 'TBD'; }
+function teamName(id){ const t = findTeamById(id); return t ? (t.emoji ? t.emoji + ' ' : '') + t.name : 'TBD'; }
 
 function recalcMatchStatus(match){
   const wasCompleted = match.status === 'completed';
@@ -1346,6 +1470,10 @@ function onMatchCompleted(match){
   freeCourtForMatch(match);
   if(match.stage === 'final'){
     state.stage = 'done';
+    launchConfetti({ big: true });
+    showChampionScreen();
+  } else if(match.stage !== 'group'){
+    launchConfetti({ big: false });
   }
   syncKnockoutSlots();
   assignMatchesToFreeCourts();
@@ -1362,10 +1490,86 @@ function onMatchUncompleted(match){
   }
 }
 
+/* ===================== CONFETTI & CHAMPION CELEBRATION ===================== */
+// Self-contained canvas confetti — no external library, so it keeps working even
+// if a venue's wifi can't reach a CDN. Guards on getContext so it's a silent no-op
+// in non-browser test harnesses instead of throwing.
+function launchConfetti(opts){
+  opts = opts || {};
+  const canvas = document.getElementById('confettiCanvas');
+  if(!canvas || typeof canvas.getContext !== 'function') return;
+  const ctx = canvas.getContext('2d');
+  if(!ctx) return;
+  const big = !!opts.big;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.classList.remove('hidden');
+  const colors = ['#FFC72C','#2bab63','#F0B400','#e6a400','#ffffff'];
+  const count = big ? 160 : 50;
+  const duration = big ? 3200 : 1500;
+  const particles = [];
+  for(let i=0;i<count;i++){
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: -20 - Math.random() * canvas.height * 0.3,
+      r: 4 + Math.random() * 5,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vy: 2 + Math.random() * (big ? 4 : 3),
+      vx: (Math.random() - 0.5) * (big ? 3 : 2),
+      rot: Math.random() * Math.PI * 2,
+      vrot: (Math.random() - 0.5) * 0.3
+    });
+  }
+  const start = Date.now();
+  function frame(){
+    const elapsed = Date.now() - start;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p=>{
+      p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.r/2, -p.r/2, p.r, p.r*1.6);
+      ctx.restore();
+    });
+    if(elapsed < duration){
+      requestAnimationFrame(frame);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.classList.add('hidden');
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+function showChampionScreen(){
+  const finalMatch = state.matches.find(m => m.stage === 'final');
+  if(!finalMatch || !finalMatch.winnerId) return;
+  const team = findTeamById(finalMatch.winnerId);
+  if(!team) return;
+  const emojiEl = document.getElementById('championEmoji');
+  const nameEl = document.getElementById('championTeamName');
+  const rosterEl = document.getElementById('championRoster');
+  if(emojiEl) emojiEl.textContent = team.emoji || '🏐';
+  if(nameEl) nameEl.textContent = team.name;
+  if(rosterEl){
+    const players = (team.players || []).filter(p => p && p.trim());
+    rosterEl.innerHTML = players.map(p => `<span>🙌 ${escapeHtml(p)}</span>`).join('');
+  }
+  const overlay = document.getElementById('championScreenOverlay');
+  if(overlay) overlay.classList.remove('hidden');
+}
+
+function closeChampionScreen(){
+  document.getElementById('championScreenOverlay').classList.add('hidden');
+}
+
 /* ===================== MATCH MODAL ===================== */
 let currentModalMatchId = null;
 
 function openMatchModal(matchId){
+  if(currentRole === 'display') return; // a kiosk iPad shouldn't pop up a score modal on a stray tap
   const match = findMatchById(matchId);
   if(!match) return;
   currentModalMatchId = matchId;
@@ -1608,6 +1812,7 @@ function buildKnockoutSkeleton(){
   let order = nextOrderValue();
   const standing = (groupId, rank) => ({ type:'standing', groupId, rank });
   const winner = (matchId) => ({ type:'winner', matchId });
+  const loser = (matchId) => ({ type:'loser', matchId });
 
   const directQualifiers = numGroups * 2;
   const bracketSize = nextPowerOfTwo(directQualifiers);
@@ -1637,6 +1842,7 @@ function buildKnockoutSkeleton(){
   const rounds = [ { name: roundNames[0], matchIds: currentRoundMatches.map(m=>m.id) } ];
   const allNewMatches = currentRoundMatches.slice();
 
+  let semifinalMatches = null;
   for(let r=1; r<roundNames.length; r++){
     const nextRoundMatches = [];
     for(let i=0; i<currentRoundMatches.length; i+=2){
@@ -1646,9 +1852,22 @@ function buildKnockoutSkeleton(){
         team2Source: winner(currentRoundMatches[i+1].id)
       }));
     }
+    // The round about to be replaced by the final is the semifinal — its 2 losers
+    // are who plays the 3rd-place match.
+    if(r === roundNames.length - 1) semifinalMatches = currentRoundMatches;
     rounds.push({ name: roundNames[r], matchIds: nextRoundMatches.map(m=>m.id) });
     allNewMatches.push(...nextRoundMatches);
     currentRoundMatches = nextRoundMatches;
+  }
+
+  if(semifinalMatches && semifinalMatches.length === 2){
+    const thirdPlaceMatch = createMatch({
+      stage: 'third_place', order: order++,
+      team1Source: loser(semifinalMatches[0].id),
+      team2Source: loser(semifinalMatches[1].id)
+    });
+    allNewMatches.push(thirdPlaceMatch);
+    rounds.push({ name: '🥉 Petite finale (3e place)', matchIds: [thirdPlaceMatch.id] });
   }
 
   state.matches.push(...allNewMatches);
@@ -1663,6 +1882,10 @@ function resolveSource(source){
   if(source.type === 'winner'){
     const m = findMatchById(source.matchId);
     return (m && m.winnerId) || null;
+  }
+  if(source.type === 'loser'){
+    const m = findMatchById(source.matchId);
+    return (m && m.loserId) || null;
   }
   if(source.type === 'standing'){
     if(!groupAllMatchesComplete(source.groupId)) return null;
@@ -1691,7 +1914,7 @@ function syncKnockoutSlots(){
 }
 
 function stageLabel(stage){
-  return { group:'Group', round16:'Round of 16', quarterfinal:'Quarterfinal', semifinal:'Semifinal', final:'Final' }[stage] || stage;
+  return { group:'Group', round16:'Round of 16', quarterfinal:'Quarterfinal', semifinal:'Semifinal', final:'Final', third_place:'3rd Place' }[stage] || stage;
 }
 /* ===================== RENDER: ROOT ===================== */
 function renderAll(){
@@ -1718,7 +1941,7 @@ function renderTeamsRosterView(){
       return `
         <div class="team-item">
           <div class="team-name-row">
-            <div class="team-badge">${escapeHtml(team.name.charAt(0).toUpperCase())}</div>
+            <div class="team-badge">${team.emoji ? escapeHtml(team.emoji) : escapeHtml(team.name.charAt(0).toUpperCase())}</div>
             <strong style="font-size:15px;">${escapeHtml(team.name)}</strong>
           </div>
           ${players.length ? `<div class="players-grid" style="grid-template-columns:1fr 1fr;">${players.map(p=>`<div style="font-size:12px;color:var(--muted);padding:4px 8px;background:#0000001a;border-radius:6px;">🙋 ${escapeHtml(p)}</div>`).join('')}</div>` : '<div style="font-size:12px;color:var(--muted);font-style:italic;">No players listed</div>'}
@@ -1777,6 +2000,47 @@ function groupName(groupId){
 }
 
 /* ===================== RENDER: MATCHES ===================== */
+// Anyone — admin or joueur — can predict a not-yet-decided match's winner. Votes
+// are keyed by an anonymous per-device id (see getVoterId()) so a phone can change
+// its own pick but can't vote twice as two different "people".
+function castPrediction(matchId, pick){
+  const voterId = getVoterId();
+  if(predictionsReady){
+    predictionsRef.child(matchId).child(voterId).set(pick);
+  } else {
+    state.predictions[matchId] = state.predictions[matchId] || {};
+    state.predictions[matchId][voterId] = pick;
+    saveState();
+    renderMatchesView();
+  }
+}
+
+function predictionBlockHtml(match){
+  const preds = (state.predictions && state.predictions[match.id]) || {};
+  const voterId = getVoterId();
+  const myPick = preds[voterId];
+  const counts = { team1: 0, team2: 0 };
+  Object.keys(preds).forEach(v => { const p = preds[v]; if(counts[p] !== undefined) counts[p]++; });
+  const total = counts.team1 + counts.team2;
+  const pct = side => total ? Math.round(counts[side] / total * 100) : 0;
+
+  if(match.status === 'completed'){
+    if(!myPick) return '';
+    const winnerSide = match.winnerId === match.team1Id ? 'team1' : 'team2';
+    const correct = myPick === winnerSide;
+    return `<div class="predict-block predict-result ${correct?'correct':'wrong'}">${correct ? '✅ Bon pronostic !' : '❌ Pronostic manqué'}</div>`;
+  }
+  return `
+    <div class="predict-block">
+      <div class="predict-row" data-predict-match="${match.id}">
+        <button class="predict-btn ${myPick==='team1'?'picked':''}" data-pick="team1">${escapeHtml(teamName(match.team1Id))} · ${pct('team1')}%</button>
+        <button class="predict-btn ${myPick==='team2'?'picked':''}" data-pick="team2">${escapeHtml(teamName(match.team2Id))} · ${pct('team2')}%</button>
+      </div>
+      ${total ? `<div class="predict-total">${total} pronostic${total>1?'s':''}</div>` : `<div class="predict-total">Sois le premier à pronostiquer !</div>`}
+    </div>
+  `;
+}
+
 function matchCardHtml(match){
   const courtTxt = match.courtId ? (state.courts.find(c=>c.id===match.courtId)||{}).name : null;
   const t1ready = !!match.team1Id, t2ready = !!match.team2Id;
@@ -1795,6 +2059,7 @@ function matchCardHtml(match){
         <div class="status-pill">${match.status.replace('_',' ')}</div>
         ${score ? `<div class="match-score-mini">${escapeHtml(score)}</div>` : ''}
       </div>
+      ${clickable ? predictionBlockHtml(match) : ''}
     </div>
   `;
 }
@@ -1829,6 +2094,13 @@ function renderMatchesView(){
     if(m.team1Id && m.team2Id){
       card.addEventListener('click', ()=> openMatchModal(id));
     }
+  });
+  container.querySelectorAll('.predict-btn').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation(); // don't also open the score modal behind it
+      const matchId = btn.closest('[data-predict-match]').dataset.predictMatch;
+      castPrediction(matchId, btn.dataset.pick);
+    });
   });
 }
 /* ===================== RENDER: STANDINGS ===================== */
@@ -1960,9 +2232,13 @@ function renderBracketView(){
   });
 
   if(state.stage === 'done'){
-    const finalMatch = findMatchById(state.knockout.rounds[state.knockout.rounds.length-1].matchIds[0]);
+    const finalMatch = state.matches.find(m => m.stage === 'final');
     if(finalMatch && finalMatch.winnerId){
       container.insertAdjacentHTML('afterbegin', `<div class="match-winner-banner" style="margin-bottom:14px;">🏆🏐 CHAMPION: ${escapeHtml(teamName(finalMatch.winnerId))} 🏐🏆</div>`);
+    }
+    const thirdPlaceMatch = state.matches.find(m => m.stage === 'third_place');
+    if(thirdPlaceMatch && thirdPlaceMatch.winnerId){
+      container.insertAdjacentHTML('afterbegin', `<div class="match-winner-banner" style="margin-bottom:14px;opacity:.85;">🥉 3e PLACE: ${escapeHtml(teamName(thirdPlaceMatch.winnerId))}</div>`);
     }
   }
 }
@@ -2117,11 +2393,14 @@ function buildExportText(){
   }
 
   if(state.stage === 'done'){
-    const finalRound = state.knockout.rounds[state.knockout.rounds.length-1];
-    const finalMatch = findMatchById(finalRound.matchIds[0]);
+    const finalMatch = state.matches.find(m => m.stage === 'final');
     lines.push('');
     lines.push('='.repeat(50));
     lines.push('🏆 CHAMPION: ' + teamName(finalMatch.winnerId));
+    const thirdPlaceMatch = state.matches.find(m => m.stage === 'third_place');
+    if(thirdPlaceMatch && thirdPlaceMatch.winnerId){
+      lines.push('🥉 3RD PLACE: ' + teamName(thirdPlaceMatch.winnerId));
+    }
   }
 
   return lines.join('\n');
@@ -2131,6 +2410,32 @@ function renderExportView(){
   document.getElementById('export-text').value = buildExportText();
 }
 /* ===================== TABS ===================== */
+// "Mode Affichage" — a public, read-only role meant for a tablet propped up at the
+// event: no codes, no editing (isAdmin() is false for it, same as 'joueur'), just
+// the tabbar auto-cycling through what's most worth watching live.
+const DISPLAY_CYCLE_TABS = ['courts', 'bracket', 'standings'];
+const DISPLAY_CYCLE_MS = 9000;
+let displayCycleTimer = null;
+let displayCycleIdx = 0;
+function startDisplayCycle(){
+  stopDisplayCycle();
+  const container = document.getElementById('appContainer');
+  if(container) container.classList.add('display-mode');
+  displayCycleIdx = DISPLAY_CYCLE_TABS.indexOf(state.activeTab);
+  if(displayCycleIdx < 0) displayCycleIdx = 0;
+  switchTab(DISPLAY_CYCLE_TABS[displayCycleIdx]);
+  displayCycleTimer = setInterval(()=>{
+    displayCycleIdx = (displayCycleIdx + 1) % DISPLAY_CYCLE_TABS.length;
+    switchTab(DISPLAY_CYCLE_TABS[displayCycleIdx]);
+  }, DISPLAY_CYCLE_MS);
+}
+function stopDisplayCycle(){
+  clearInterval(displayCycleTimer);
+  displayCycleTimer = null;
+  const container = document.getElementById('appContainer');
+  if(container) container.classList.remove('display-mode');
+}
+
 function switchTab(tabName){
   state.activeTab = tabName;
   document.querySelectorAll('.tabbar button').forEach(b=>{
@@ -2177,6 +2482,7 @@ function wireGlobalEvents(){
   document.getElementById('roleCodeInput').addEventListener('keydown', e=>{
     if(e.key === 'Enter') submitRoleCode();
   });
+  document.getElementById('displayModeBtn').addEventListener('click', ()=> setRole('display'));
   document.getElementById('showResetRowBtn').addEventListener('click', toggleResetCodeRow);
   document.getElementById('resetCodeSubmitBtn').addEventListener('click', submitResetCode);
   document.getElementById('resetCodeInput').addEventListener('keydown', e=>{
@@ -2195,6 +2501,11 @@ function wireGlobalEvents(){
   });
   document.getElementById('clearMatchBtn').addEventListener('click', clearCurrentMatch);
   document.getElementById('saveMatchBtn').addEventListener('click', saveCurrentMatch);
+
+  document.getElementById('closeChampionScreenBtn').addEventListener('click', closeChampionScreen);
+  document.getElementById('championScreenOverlay').addEventListener('click', e=>{
+    if(e.target.id === 'championScreenOverlay') closeChampionScreen();
+  });
 
   document.getElementById('resetTournamentBtn').addEventListener('click', resetTournament);
 
