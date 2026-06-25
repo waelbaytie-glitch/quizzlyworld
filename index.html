@@ -370,6 +370,17 @@
     text-align:center;font-weight:700;color:var(--accent);
     background:var(--green-bg);border-radius:10px;padding:8px;margin:10px 0;font-size:13px;
   }
+  .podium{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .podium-place{
+    flex:1;min-width:140px;text-align:center;border-radius:12px;padding:14px 10px;
+    background:var(--panel2);border:1px solid #1d3a2680;
+  }
+  .podium-place .podium-medal{font-size:30px;line-height:1;}
+  .podium-place .podium-label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px;}
+  .podium-place .podium-team{display:block;font-size:15px;font-weight:700;margin-top:2px;}
+  .podium-place.gold{border-color:var(--accent);background:linear-gradient(160deg,#2a2008,var(--panel2));}
+  .podium-place.silver{border-color:#9fb0a8;}
+  .podium-place.bronze{border-color:#a9703f;}
   .toast{
     position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
     background:var(--accent);color:#163d1f;padding:10px 18px;border-radius:30px;
@@ -2235,11 +2246,22 @@ function renderBracketView(){
   if(state.stage === 'done'){
     const finalMatch = state.matches.find(m => m.stage === 'final');
     if(finalMatch && finalMatch.winnerId){
-      container.insertAdjacentHTML('afterbegin', `<div class="match-winner-banner" style="margin-bottom:14px;">🏆🏐 CHAMPION: ${escapeHtml(teamName(finalMatch.winnerId))} 🏐🏆</div>`);
-    }
-    const thirdPlaceMatch = state.matches.find(m => m.stage === 'third_place');
-    if(thirdPlaceMatch && thirdPlaceMatch.winnerId){
-      container.insertAdjacentHTML('afterbegin', `<div class="match-winner-banner" style="margin-bottom:14px;opacity:.85;">🥉 3e PLACE: ${escapeHtml(teamName(thirdPlaceMatch.winnerId))}</div>`);
+      const thirdPlaceMatch = state.matches.find(m => m.stage === 'third_place');
+      const places = [
+        { cls: 'gold', medal: '🥇', label: '1ère place', teamId: finalMatch.winnerId },
+        { cls: 'silver', medal: '🥈', label: '2e place', teamId: finalMatch.loserId }
+      ];
+      if(thirdPlaceMatch && thirdPlaceMatch.winnerId){
+        places.push({ cls: 'bronze', medal: '🥉', label: '3e place', teamId: thirdPlaceMatch.winnerId });
+      }
+      const podiumHtml = `<div class="podium">${places.map(p => `
+        <div class="podium-place ${p.cls}">
+          <div class="podium-medal">${p.medal}</div>
+          <span class="podium-label">${p.label}</span>
+          <span class="podium-team">${escapeHtml(teamName(p.teamId))}</span>
+        </div>
+      `).join('')}</div>`;
+      container.insertAdjacentHTML('afterbegin', podiumHtml);
     }
   }
 }
