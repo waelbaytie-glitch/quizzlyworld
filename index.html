@@ -370,17 +370,24 @@
     text-align:center;font-weight:700;color:var(--accent);
     background:var(--green-bg);border-radius:10px;padding:8px;margin:10px 0;font-size:13px;
   }
-  .podium{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
-  .podium-place{
-    flex:1;min-width:140px;text-align:center;border-radius:12px;padding:14px 10px;
+  .podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-bottom:18px;}
+  .podium-place{display:flex;flex-direction:column;align-items:center;flex:1;max-width:170px;}
+  .podium-card{
+    width:100%;text-align:center;border-radius:10px;padding:10px 8px;margin-bottom:8px;
     background:var(--panel2);border:1px solid #1d3a2680;
   }
-  .podium-place .podium-medal{font-size:30px;line-height:1;}
-  .podium-place .podium-label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px;}
-  .podium-place .podium-team{display:block;font-size:15px;font-weight:700;margin-top:2px;}
-  .podium-place.gold{border-color:var(--accent);background:linear-gradient(160deg,#2a2008,var(--panel2));}
-  .podium-place.silver{border-color:#9fb0a8;}
-  .podium-place.bronze{border-color:#a9703f;}
+  .podium-medal{font-size:28px;line-height:1;display:block;}
+  .podium-team{display:block;font-size:13px;font-weight:700;margin-top:4px;}
+  .podium-step{
+    width:100%;border-radius:8px 8px 0 0;display:flex;align-items:flex-start;
+    justify-content:center;padding-top:6px;font-size:26px;font-weight:800;color:#163d1f;
+  }
+  .podium-place.gold .podium-card{border-color:var(--accent);background:linear-gradient(160deg,#2a2008,var(--panel2));}
+  .podium-place.gold .podium-step{height:92px;background:linear-gradient(180deg,var(--accent),#e6a400);}
+  .podium-place.silver .podium-card{border-color:#9fb0a8;}
+  .podium-place.silver .podium-step{height:64px;background:linear-gradient(180deg,#d7dedb,#9fb0a8);}
+  .podium-place.bronze .podium-card{border-color:#a9703f;}
+  .podium-place.bronze .podium-step{height:44px;background:linear-gradient(180deg,#cf9a66,#a9703f);}
   .toast{
     position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
     background:var(--accent);color:#163d1f;padding:10px 18px;border-radius:30px;
@@ -2250,18 +2257,21 @@ function renderBracketView(){
     const finalMatch = state.matches.find(m => m.stage === 'final');
     if(finalMatch && finalMatch.winnerId){
       const thirdPlaceMatch = state.matches.find(m => m.stage === 'third_place');
-      const places = [
-        { cls: 'gold', medal: '🥇', label: '1ère place', teamId: finalMatch.winnerId },
-        { cls: 'silver', medal: '🥈', label: '2e place', teamId: finalMatch.loserId }
-      ];
-      if(thirdPlaceMatch && thirdPlaceMatch.winnerId){
-        places.push({ cls: 'bronze', medal: '🥉', label: '3e place', teamId: thirdPlaceMatch.winnerId });
-      }
-      const podiumHtml = `<div class="podium">${places.map(p => `
+      const gold = { cls: 'gold', medal: '🥇', rank: 1, teamId: finalMatch.winnerId };
+      const silver = { cls: 'silver', medal: '🥈', rank: 2, teamId: finalMatch.loserId };
+      const bronze = (thirdPlaceMatch && thirdPlaceMatch.winnerId)
+        ? { cls: 'bronze', medal: '🥉', rank: 3, teamId: thirdPlaceMatch.winnerId }
+        : null;
+      // Real podium layout: 2nd on the left, 1st centered and tallest, 3rd on the
+      // right and shortest — not just 3 equal-height cards in finish order.
+      const stand = [silver, gold, bronze].filter(Boolean);
+      const podiumHtml = `<div class="podium">${stand.map(p => `
         <div class="podium-place ${p.cls}">
-          <div class="podium-medal">${p.medal}</div>
-          <span class="podium-label">${p.label}</span>
-          <span class="podium-team">${escapeHtml(teamName(p.teamId))}</span>
+          <div class="podium-card">
+            <span class="podium-medal">${p.medal}</span>
+            <span class="podium-team">${escapeHtml(teamName(p.teamId))}</span>
+          </div>
+          <div class="podium-step">${p.rank}</div>
         </div>
       `).join('')}</div>`;
       container.insertAdjacentHTML('afterbegin', podiumHtml);
