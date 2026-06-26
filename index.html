@@ -359,13 +359,18 @@
   #confettiCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:60;pointer-events:none;}
 
   /* ---------- Print / PDF export ---------- */
-  #printResultsContainer{display:none;}
-  #printResultsContainer h1{color:#163d1f;font-size:24px;margin-bottom:2px;}
-  #printResultsContainer h2{color:#163d1f;font-size:18px;margin:18px 0 8px;}
-  #printResultsContainer .print-podium{display:flex;gap:16px;margin:16px 0;}
-  #printResultsContainer .print-podium div{flex:1;text-align:center;border:1px solid #ccc;border-radius:8px;padding:10px;}
-  #printResultsContainer table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13px;}
-  #printResultsContainer th,#printResultsContainer td{border:1px solid #ccc;padding:4px 6px;text-align:left;}
+  /* Sized to fit a single A4/Letter page: small margins, tight line-height,
+     compact podium + standings — kept dense on purpose. */
+  @page{margin:8mm;}
+  #printResultsContainer{display:none;font-size:11px;line-height:1.2;}
+  #printResultsContainer h1{color:#163d1f;font-size:16px;margin:0 0 2px;}
+  #printResultsContainer h2{color:#163d1f;font-size:12px;margin:8px 0 4px;}
+  #printResultsContainer p{margin:0 0 2px;}
+  #printResultsContainer .print-podium{display:flex;gap:8px;margin:8px 0;}
+  #printResultsContainer .print-podium div{flex:1;text-align:center;border:1px solid #ccc;border-radius:6px;padding:4px;font-size:10px;}
+  #printResultsContainer table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:10px;}
+  #printResultsContainer th,#printResultsContainer td{border:1px solid #ccc;padding:2px 4px;text-align:left;}
+  #printResultsContainer pre{font-size:9px;line-height:1.25;margin:0;}
   @media print{
     /* .app-footer (with the "Changer de rôle" button) is a sibling of
        #appContainer, not a child — hiding only #appContainer left it
@@ -2662,11 +2667,10 @@ function buildPrintResultsHtml(){
   }
   return `
     <h1>🏐 Beach Volleyball &amp; BBQ — Résultats du tournoi</h1>
-    <p>PCL Construction — District de Montréal</p>
-    <p>Généré le ${new Date().toLocaleDateString('fr-CA')}</p>
+    <p>PCL Construction — District de Montréal · Généré le ${new Date().toLocaleDateString('fr-CA')}</p>
     ${podiumHtml}
     <h2>Détails complets</h2>
-    <pre style="white-space:pre-wrap;font-family:monospace;font-size:12px;">${escapeHtml(buildExportText())}</pre>
+    <pre style="white-space:pre-wrap;font-family:monospace;">${escapeHtml(buildExportText().replace(/\n{2,}/g, '\n'))}</pre>
   `;
 }
 
