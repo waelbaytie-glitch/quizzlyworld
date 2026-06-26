@@ -1577,7 +1577,7 @@ function renderTeamList(){
         <input type="text" class="team-name-input" data-idx="${i}" value="${escapeAttr(team.name)}" placeholder="Team name">
       </div>
       <div class="players-grid">
-        ${[0,1,2,3].map(p=>`<input type="text" class="player-input" data-idx="${i}" data-p="${p}" value="${escapeAttr(team.players[p]||'')}" placeholder="Player ${p+1} (optional)">`).join('')}
+        ${[0,1,2,3].map(p=>`<input type="text" class="player-input" data-idx="${i}" data-p="${p}" value="${escapeAttr(team.players[p]||'')}" placeholder="Joueur ${p+1}">`).join('')}
       </div>
     `;
     container.appendChild(item);
@@ -2388,29 +2388,48 @@ function teamEmojiBadgeHtml(team){
   return `<div class="team-badge">${team.emoji ? escapeHtml(team.emoji) : escapeHtml(team.name.charAt(0).toUpperCase())}</div>`;
 }
 
+function rosterTeamItemHtml(team){
+  const admin = isAdmin();
+  const nameHtml = admin
+    ? `<input type="text" class="roster-name-input" data-team-id="${team.id}" value="${escapeAttr(team.name)}" placeholder="Nom de l'équipe">`
+    : `<strong style="font-size:15px;">${escapeHtml(team.name)}</strong>`;
+
+  let playersHtml;
+  if(admin){
+    // Always 4 fields — a team may field fewer, that's fine and left unsaid.
+    playersHtml = `<div class="players-grid" style="grid-template-columns:1fr 1fr;">${
+      [0,1,2,3].map(p=>`<input type="text" class="roster-player-input" data-team-id="${team.id}" data-p="${p}" value="${escapeAttr((team.players && team.players[p]) || '')}" placeholder="Joueur ${p+1}">`).join('')
+    }</div>`;
+  } else {
+    const players = (team.players || []).filter(p => p && p.trim());
+    playersHtml = players.length
+      ? `<div class="players-grid" style="grid-template-columns:1fr 1fr;">${players.map(p=>`<div style="font-size:12px;color:var(--muted);padding:4px 8px;background:#0000001a;border-radius:6px;">🙋 ${escapeHtml(p)}</div>`).join('')}</div>`
+      : '<div style="font-size:12px;color:var(--muted);font-style:italic;">Aucun joueur listé</div>';
+  }
+
+  return `
+    <div class="team-item">
+      <div class="team-name-row">
+        ${teamEmojiBadgeHtml(team)}
+        ${nameHtml}
+      </div>
+      ${playersHtml}
+    </div>
+  `;
+}
+
 function renderTeamsRosterView(){
   const container = document.getElementById('teamsRosterContainer');
   container.innerHTML = '';
   state.groups.forEach(group=>{
     const card = document.createElement('div');
     card.className = 'card';
-    const teamsHtml = group.teamIds.map(tid=>{
-      const team = findTeamById(tid);
-      const players = (team.players || []).filter(p => p && p.trim());
-      return `
-        <div class="team-item">
-          <div class="team-name-row">
-            ${teamEmojiBadgeHtml(team)}
-            <strong style="font-size:15px;">${escapeHtml(team.name)}</strong>
-          </div>
-          ${players.length ? `<div class="players-grid" style="grid-template-columns:1fr 1fr;">${players.map(p=>`<div style="font-size:12px;color:var(--muted);padding:4px 8px;background:#0000001a;border-radius:6px;">🙋 ${escapeHtml(p)}</div>`).join('')}</div>` : '<div style="font-size:12px;color:var(--muted);font-style:italic;">Aucun joueur listé</div>'}
-        </div>
-      `;
-    }).join('');
+    const teamsHtml = group.teamIds.map(tid => rosterTeamItemHtml(findTeamById(tid))).join('');
     card.innerHTML = `<h2>${escapeHtml(group.name)} <span style="color:var(--muted);font-size:12px;font-weight:400;">(${group.teamIds.length} équipes)</span></h2>` +
       `<div class="team-list" style="max-height:none;">${teamsHtml}</div>`;
     container.appendChild(card);
   });
+
   container.querySelectorAll('.roster-emoji-select').forEach(sel=>{
     sel.addEventListener('change', e=>{
       const team = findTeamById(e.target.dataset.teamId);
@@ -2419,6 +2438,26 @@ function renderTeamsRosterView(){
       team.emojiAuto = false; // an explicit pick — don't let auto-assignment touch it again
       saveState();   // syncs to Firebase, so the new emoji shows on every device
       renderAll();   // reflect it across courts, matches, bracket and this roster
+    });
+  });
+
+  // Name/player editing (admin only). On each keystroke we just update state +
+  // sync (no re-render, so the field keeps focus); on blur we renderAll() so the
+  // new name propagates to courts/matches/bracket.
+  container.querySelectorAll('.roster-name-input').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const team = findTeamById(e.target.dataset.teamId);
+      if(team){ team.name = e.target.value; saveState(); }
+    });
+    inp.addEventListener('change', ()=> renderAll());
+  });
+  container.querySelectorAll('.roster-player-input').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const team = findTeamById(e.target.dataset.teamId);
+      if(!team) return;
+      if(!team.players) team.players = ['', '', '', ''];
+      team.players[Number(e.target.dataset.p)] = e.target.value;
+      saveState();
     });
   });
 }
