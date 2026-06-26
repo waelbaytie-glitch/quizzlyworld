@@ -885,6 +885,24 @@ function suggestEmojiForName(name){
   return '';
 }
 
+// Deterministic fallback so EVERY team gets an emoji even when its name matches no
+// keyword. Hashing the name (not random) keeps it stable across reloads/devices;
+// `taken` lets the caller spread picks so two fallback teams don't collide.
+function defaultEmojiForTeam(team, taken){
+  const pool = EMOJI_CHOICES;
+  const s = team.name || team.id || '';
+  let h = 0;
+  for(let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  const start = h % pool.length;
+  if(taken){
+    for(let i = 0; i < pool.length; i++){
+      const e = pool[(start + i) % pool.length];
+      if(!taken.has(e)) return e;
+    }
+  }
+  return pool[start];
+}
+
 const DEFAULT_TEAMS = [
   { name: "Esti d'joueurs", players: ['Adrien Saycocie', 'Victor Hubert', 'Grégoire Bibaut', 'Can UGURAL'] },
   { name: 'Reply All', players: ['Marshall Hofmann', 'Frédéric Delample', 'Gabrielle Houle', 'Wael Baytie'] },
@@ -1267,6 +1285,9 @@ let currentRole = null;
 let pendingRole = null;
 
 function isAdmin(){ return currentRole === 'admin'; }
+// Emojis can be retouched in the Teams tab by an admin OR a joueur (but not a
+// passive 'display' kiosk, and not a role-less visitor).
+function canEditEmoji(){ return currentRole === 'admin' || currentRole === 'joueur'; }
 
 function showRoleScreen(){
   document.getElementById('role-screen').classList.remove('hidden');
@@ -1450,13 +1471,32 @@ function showStageScreen(){
 // Manually-picked emojis (emojiAuto === false) are left alone.
 function migrateTeamEmojis(){
   let changed = false;
+  const taken = new Set();
+  // Pass 1: normalise the flags and note every emoji already in use, so the
+  // fallback below can avoid handing out duplicates.
   state.teams.forEach(t => {
     if(t.emoji == null) t.emoji = '';
     if(t.emojiAuto == null) t.emojiAuto = !t.emoji;
+    if(t.emoji) taken.add(t.emoji);
+  });
+  // Pass 2a: assign name-keyword matches first, so they reserve their emoji before
+  // any fallback is handed out (otherwise a fallback could grab an emoji a later
+  // keyword team was going to use, creating an avoidable duplicate).
+  const needFallback = [];
+  state.teams.forEach(t => {
     if(t.emojiAuto && !t.emoji){
-      const suggested = suggestEmojiForName(t.name);
-      if(suggested){ t.emoji = suggested; changed = true; }
+      const e = suggestEmojiForName(t.name);
+      if(e){ t.emoji = e; taken.add(e); changed = true; }
+      else needFallback.push(t);
     }
+  });
+  // Pass 2b: every remaining auto team gets a deterministic, collision-avoiding
+  // default — so EVERY team ends up with an emoji.
+  needFallback.forEach(t => {
+    const e = defaultEmojiForTeam(t, taken);
+    t.emoji = e;
+    taken.add(e);
+    changed = true;
   });
   return changed;
 }
@@ -1515,6 +1555,7 @@ function renderSetupScreen(){
     b.classList.toggle('active', Number(b.dataset.points) === state.config.pointsPerGame);
   });
   ensureTeamsArray(state.config.numTeams);
+  migrateTeamEmojis(); // give freshly-added teams their default emoji right away
   document.getElementById('formatPreview').textContent = describeFormat(state.config.numTeams);
   renderTeamList();
   saveState();
@@ -2335,6 +2376,18 @@ function renderAll(){
 }
 
 /* ===================== RENDER: TEAMS ROSTER ===================== */
+function teamEmojiBadgeHtml(team){
+  // Admin & joueur can retouch the emoji right here; everyone else sees a static
+  // badge. The <select> reuses the setup screen's styling.
+  if(canEditEmoji()){
+    return `<select class="team-emoji-select roster-emoji-select" data-team-id="${team.id}" title="Changer l'emoji de l'équipe">
+        <option value="">—</option>
+        ${EMOJI_CHOICES.map(e=>`<option value="${e}" ${team.emoji===e?'selected':''}>${e}</option>`).join('')}
+      </select>`;
+  }
+  return `<div class="team-badge">${team.emoji ? escapeHtml(team.emoji) : escapeHtml(team.name.charAt(0).toUpperCase())}</div>`;
+}
+
 function renderTeamsRosterView(){
   const container = document.getElementById('teamsRosterContainer');
   container.innerHTML = '';
@@ -2347,16 +2400,26 @@ function renderTeamsRosterView(){
       return `
         <div class="team-item">
           <div class="team-name-row">
-            <div class="team-badge">${team.emoji ? escapeHtml(team.emoji) : escapeHtml(team.name.charAt(0).toUpperCase())}</div>
+            ${teamEmojiBadgeHtml(team)}
             <strong style="font-size:15px;">${escapeHtml(team.name)}</strong>
           </div>
-          ${players.length ? `<div class="players-grid" style="grid-template-columns:1fr 1fr;">${players.map(p=>`<div style="font-size:12px;color:var(--muted);padding:4px 8px;background:#0000001a;border-radius:6px;">🙋 ${escapeHtml(p)}</div>`).join('')}</div>` : '<div style="font-size:12px;color:var(--muted);font-style:italic;">No players listed</div>'}
+          ${players.length ? `<div class="players-grid" style="grid-template-columns:1fr 1fr;">${players.map(p=>`<div style="font-size:12px;color:var(--muted);padding:4px 8px;background:#0000001a;border-radius:6px;">🙋 ${escapeHtml(p)}</div>`).join('')}</div>` : '<div style="font-size:12px;color:var(--muted);font-style:italic;">Aucun joueur listé</div>'}
         </div>
       `;
     }).join('');
-    card.innerHTML = `<h2>${escapeHtml(group.name)} <span style="color:var(--muted);font-size:12px;font-weight:400;">(${group.teamIds.length} teams)</span></h2>` +
+    card.innerHTML = `<h2>${escapeHtml(group.name)} <span style="color:var(--muted);font-size:12px;font-weight:400;">(${group.teamIds.length} équipes)</span></h2>` +
       `<div class="team-list" style="max-height:none;">${teamsHtml}</div>`;
     container.appendChild(card);
+  });
+  container.querySelectorAll('.roster-emoji-select').forEach(sel=>{
+    sel.addEventListener('change', e=>{
+      const team = findTeamById(e.target.dataset.teamId);
+      if(!team) return;
+      team.emoji = e.target.value;
+      team.emojiAuto = false; // an explicit pick — don't let auto-assignment touch it again
+      saveState();   // syncs to Firebase, so the new emoji shows on every device
+      renderAll();   // reflect it across courts, matches, bracket and this roster
+    });
   });
 }
 
