@@ -650,6 +650,12 @@
           <div class="device-stat"><span class="device-stat-num" id="deviceStatDisplay">0</span><span class="device-stat-label">Affichage</span></div>
         </div>
       </div>
+
+      <div class="card" id="codeVersionCard">
+        <h2>🛠️ Version du code</h2>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:8px;">Dernière fois que la page (index.html) a été mise à jour sur le serveur.</p>
+        <div id="codeLastUpdated" style="font-size:15px;font-weight:600;color:var(--accent);">—</div>
+      </div>
     </div>
 
     <div class="actions-row">
@@ -1248,6 +1254,23 @@ function renderDeviceLoginsView(){
   document.getElementById('deviceStatDisplay').textContent = String(counts.display);
 }
 
+// document.lastModified reflects the served file's Last-Modified header (GitHub
+// Pages sends one), so this shows when index.html was actually last deployed —
+// no manual version bump needed. Displayed in Montréal time regardless of the
+// viewer's own timezone.
+function renderCodeVersion(){
+  const el = document.getElementById('codeLastUpdated');
+  if(!el) return;
+  const raw = document.lastModified;
+  const d = raw ? new Date(raw) : null;
+  if(!d || isNaN(d.getTime())){ el.textContent = 'Inconnue'; return; }
+  el.textContent = d.toLocaleString('fr-CA', {
+    timeZone: 'America/Toronto',
+    dateStyle: 'long',
+    timeStyle: 'short'
+  }) + ' (heure de Montréal)';
+}
+
 function setRole(role){
   currentRole = role;
   try{ localStorage.setItem(ROLE_KEY, role); }catch(e){}
@@ -1297,6 +1320,7 @@ function applyRolePermissions(){
   document.getElementById('saveMatchBtn').classList.toggle('hidden', !isAdmin());
   document.getElementById('resultsShareCard').classList.toggle('hidden', !isAdmin());
   document.getElementById('deviceLoginsCard').classList.toggle('hidden', !isAdmin());
+  document.getElementById('codeVersionCard').classList.toggle('hidden', !isAdmin());
 }
 
 // Single source of truth for which of the 3 top-level screens is visible, based
@@ -2219,6 +2243,7 @@ function renderAll(){
   renderMusicView();
   renderExportView();
   renderDeviceLoginsView();
+  renderCodeVersion();
 }
 
 /* ===================== RENDER: TEAMS ROSTER ===================== */
