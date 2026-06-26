@@ -698,7 +698,83 @@ function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9
 
 var state = null;
 
-const EMOJI_CHOICES = ['🏐','🔥','⚡','🌴','🦁','🐯','🚀','🍉','🌺','🎯','🥥','🏆','😎','🦅','🐬','🌊','☀️','🎉','💪','🦈'];
+const EMOJI_CHOICES = ['🏐','🔥','⚡','🌴','🦁','🐯','🚀','🍉','🌺','🎯','🥥','🏆','😎','🦅','🐬','🌊','☀️','🎉','💪','🦈',
+  '🐻','🐺','🦊','🐆','🐙','🦀','🐢','🦩','🦜','🐵','🦍','🐊','🐍','🦂','🐝','🦋','🐳','🦭','🐧','🦆','🐂','🐎','🐉',
+  '❄️','🌩️','🌙','⭐','🏖️','🏴‍☠️','🥷','⚔️','🤖','👻','😈','😇','👑','💣','🌋','🍕','🍌','🍍','🌈','🌅','👷','🧱'];
+
+// Picks an emoji by scanning a team name for a recognizable French/English word —
+// e.g. "Les Requins" or "Sharks" both match 🦈. Order matters: first match wins.
+const EMOJI_NAME_HINTS = [
+  ['🦈', ['requin','shark']],
+  ['🐯', ['tigre','tiger']],
+  ['🦁', ['lion']],
+  ['🐻', ['ours','bear']],
+  ['🐺', ['loup','wolf']],
+  ['🦊', ['renard','fox']],
+  ['🐆', ['panthere','panther','leopard','guepard','cheetah']],
+  ['🦅', ['aigle','eagle','faucon','falcon','hawk']],
+  ['🐬', ['dauphin','dolphin']],
+  ['🐳', ['baleine','whale']],
+  ['🦭', ['phoque','seal']],
+  ['🐧', ['pingouin','manchot','penguin']],
+  ['🦆', ['canard','duck']],
+  ['🐙', ['pieuvre','poulpe','octopus']],
+  ['🦀', ['crabe','crab']],
+  ['🐢', ['tortue','turtle']],
+  ['🦩', ['flamant','flamingo']],
+  ['🦜', ['perroquet','parrot']],
+  ['🐵', ['singe','monkey']],
+  ['🦍', ['gorille','gorilla']],
+  ['🐊', ['crocodile','alligator']],
+  ['🐍', ['serpent','snake','cobra']],
+  ['🦂', ['scorpion']],
+  ['🐝', ['abeille','guepe','bee','wasp']],
+  ['🦋', ['papillon','butterfly']],
+  ['🐂', ['taureau','bull','bison']],
+  ['🐎', ['cheval','horse','mustang']],
+  ['🐉', ['dragon']],
+  ['🔥', ['feu','flamme','fire','flame']],
+  ['❄️', ['glace','glacial','froid','ice','frost']],
+  ['⚡', ['tonnerre','foudre','eclair','thunder','lightning']],
+  ['🌩️', ['tempete','orage','storm']],
+  ['☀️', ['soleil','sun']],
+  ['🌅', ['coucher','sunset']],
+  ['🌙', ['lune','moon']],
+  ['⭐', ['etoile','star']],
+  ['🌊', ['vague','wave','surf']],
+  ['🏖️', ['plage','sable','beach','sand']],
+  ['🌴', ['palmier','palm']],
+  ['🥥', ['coco','noix de coco','coconut']],
+  ['🍉', ['melon','pasteque','watermelon']],
+  ['🍍', ['ananas','pineapple']],
+  ['🍌', ['banane','banana']],
+  ['🍕', ['pizza']],
+  ['🏴‍☠️', ['pirate']],
+  ['🥷', ['ninja']],
+  ['⚔️', ['viking','chevalier','knight','guerrier','warrior']],
+  ['🤖', ['robot']],
+  ['👻', ['fantome','spectre','ghost']],
+  ['😈', ['diable','devil','demon']],
+  ['😇', ['ange','angel']],
+  ['👑', ['roi','reine','king','queen']],
+  ['💣', ['bombe','bomb']],
+  ['🌋', ['volcan','volcano']],
+  ['🌈', ['arc-en-ciel','arcenciel','rainbow']],
+  ['💪', ['muscle','force','fort','strong']],
+  ['👷', ['chantier','construction','hard hat','builder']],
+  ['🧱', ['brique','brick']],
+  ['🏆', ['champion','best','meilleur']],
+  ['🚀', ['fusee','rocket']]
+];
+
+function suggestEmojiForName(name){
+  if(!name) return '';
+  const normalized = name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  for(const [emoji, keywords] of EMOJI_NAME_HINTS){
+    if(keywords.some(k => normalized.includes(k))) return emoji;
+  }
+  return '';
+}
 
 const DEFAULT_TEAMS = [
   { name: "Esti d'joueurs", players: ['Adrien Saycocie', 'Victor Hubert', 'Grégoire Bibaut', 'Can UGURAL'] },
@@ -1184,7 +1260,10 @@ function init(){
   state = loaded || defaultState();
   if(!state.songs) state.songs = [];
   if(!state.predictions) state.predictions = {};
-  state.teams.forEach(t => { if(t.emoji == null) t.emoji = ''; });
+  state.teams.forEach(t => {
+    if(t.emoji == null) t.emoji = '';
+    if(t.emojiAuto == null) t.emojiAuto = !t.emoji; // teams from before this feature: only auto-suggest if they never got an emoji
+  });
   initFirebase();
   wireGlobalEvents();
   try{ currentRole = localStorage.getItem(ROLE_KEY); }catch(e){ currentRole = null; }
@@ -1214,7 +1293,7 @@ function ensureTeamsArray(n){
   const teams = state.teams;
   while(teams.length < n){
     const idx = teams.length + 1;
-    teams.push({ id: uid('team'), name: 'Team ' + idx, players: ['', '', '', ''], emoji: '' });
+    teams.push({ id: uid('team'), name: 'Team ' + idx, players: ['', '', '', ''], emoji: '', emojiAuto: true });
   }
   while(teams.length > n){
     teams.pop();
@@ -1256,7 +1335,22 @@ function renderTeamList(){
   });
   container.querySelectorAll('.team-name-input').forEach(inp=>{
     inp.addEventListener('input', e=>{
-      state.teams[Number(e.target.dataset.idx)].name = e.target.value;
+      const i = Number(e.target.dataset.idx);
+      const team = state.teams[i];
+      team.name = e.target.value;
+      // Only auto-suggest while the team hasn't had its emoji manually picked —
+      // see the .team-emoji-select 'change' handler below, which locks this off.
+      if(team.emojiAuto){
+        const suggested = suggestEmojiForName(team.name);
+        if(suggested && suggested !== team.emoji){
+          team.emoji = suggested;
+          const row = container.children[i];
+          const badge = row.querySelector('.team-badge');
+          const select = row.querySelector('.team-emoji-select');
+          if(badge) badge.textContent = suggested;
+          if(select) select.value = suggested;
+        }
+      }
       saveState();
     });
   });
@@ -1264,6 +1358,7 @@ function renderTeamList(){
     sel.addEventListener('change', e=>{
       const i = Number(e.target.dataset.idx);
       state.teams[i].emoji = e.target.value;
+      state.teams[i].emojiAuto = false; // manual pick — stop overriding it from the name field
       saveState();
       const badge = container.children[i].querySelector('.team-badge');
       if(badge) badge.textContent = e.target.value || String(i+1);
