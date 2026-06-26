@@ -737,8 +737,8 @@ const EMOJI_NAME_HINTS = [
   ['❄️', ['glace','glacial','froid','ice','frost']],
   ['⚡', ['tonnerre','foudre','eclair','thunder','lightning']],
   ['🌩️', ['tempete','orage','storm']],
-  ['☀️', ['soleil','sun']],
   ['🌅', ['coucher','sunset']],
+  ['☀️', ['soleil','sun']],
   ['🌙', ['lune','moon']],
   ['⭐', ['etoile','star']],
   ['🌊', ['vague','wave','surf']],
@@ -1013,6 +1013,9 @@ function initFirebase(){
         if(v == null && TOURNAMENT_ARRAY_FIELDS.includes(k)) v = [];
         state[k] = v;
       });
+      // Teams synced in from Firebase (e.g. another device's pre-existing
+      // roster) may still be missing an emoji — backfill and push it back.
+      if(migrateTeamEmojis()) saveState();
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
       if(prevStage !== 'done' && state.stage === 'done'){
         launchConfetti({ big: true });
@@ -1255,15 +1258,29 @@ function showStageScreen(){
 }
 
 /* ===================== INIT ===================== */
+// Retroactively assigns an emoji to teams that existed before this feature did
+// (or any synced from elsewhere without one) — same name-keyword matching as
+// typing in the setup screen, just run once per team instead of per keystroke.
+// Manually-picked emojis (emojiAuto === false) are left alone.
+function migrateTeamEmojis(){
+  let changed = false;
+  state.teams.forEach(t => {
+    if(t.emoji == null) t.emoji = '';
+    if(t.emojiAuto == null) t.emojiAuto = !t.emoji;
+    if(t.emojiAuto && !t.emoji){
+      const suggested = suggestEmojiForName(t.name);
+      if(suggested){ t.emoji = suggested; changed = true; }
+    }
+  });
+  return changed;
+}
+
 function init(){
   const loaded = loadState();
   state = loaded || defaultState();
   if(!state.songs) state.songs = [];
   if(!state.predictions) state.predictions = {};
-  state.teams.forEach(t => {
-    if(t.emoji == null) t.emoji = '';
-    if(t.emojiAuto == null) t.emojiAuto = !t.emoji; // teams from before this feature: only auto-suggest if they never got an emoji
-  });
+  migrateTeamEmojis();
   initFirebase();
   wireGlobalEvents();
   try{ currentRole = localStorage.getItem(ROLE_KEY); }catch(e){ currentRole = null; }
