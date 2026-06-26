@@ -3046,12 +3046,8 @@ function performReset(){
   state = defaultState();
   lastSyncedTournamentJSON = null;
   pushTournamentState();
-  // The device-login tally is "since this tournament" — wipe it on reset, then
-  // re-register this device so the admin doing the reset is still counted.
-  if(deviceLoginsReady){
-    deviceLoginsRef.set(null).catch(logFirebaseError('reset deviceLogins'));
-    if(currentRole) registerDeviceLogin(currentRole);
-  }
+  // NOTE: /deviceLogins is intentionally NOT cleared here — the tally is cumulative
+  // and must survive a tournament reset (matching the "cumulatif" label on the card).
 }
 
 function resetTournament(){
