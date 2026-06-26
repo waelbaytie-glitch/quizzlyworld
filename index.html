@@ -462,6 +462,94 @@
   .role-reset-zone{margin-top:26px;}
   .role-reset-zone .btn-secondary{opacity:.65;}
   .switch-role-btn{margin-left:10px;}
+
+  /* ============================================================
+     PREMIUM VISUAL UPGRADE  (CSS-only; loaded last so it layers
+     over the base rules above without changing any markup/logic)
+     ============================================================ */
+
+  /* 1 — Living "beach sun" glow behind the hero header */
+  header.app-header{position:relative;overflow:hidden;}
+  header.app-header::before{
+    content:'';position:absolute;inset:-60% -20% auto;height:240%;z-index:0;
+    background:
+      radial-gradient(55% 45% at 50% 0%, rgba(255,199,44,.22), transparent 70%),
+      radial-gradient(38% 38% at 18% 28%, rgba(43,171,99,.18), transparent 72%),
+      radial-gradient(42% 40% at 82% 32%, rgba(47,174,93,.14), transparent 72%);
+    filter:blur(22px);pointer-events:none;
+    animation:heroGlow 13s ease-in-out infinite alternate;
+  }
+  header.app-header > *{position:relative;z-index:1;}
+  @keyframes heroGlow{
+    0%{transform:translate3d(-5%,0,0) scale(1);}
+    100%{transform:translate3d(5%,-2%,0) scale(1.09);}
+  }
+
+  /* 2 — Glass depth + subtle inner highlight on every card */
+  .card{
+    background:linear-gradient(158deg,#123a25 0%,#0e2f1d 60%,#0c2a1a 100%);
+    border:1px solid rgba(255,255,255,.07);
+    box-shadow:0 6px 22px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
+  }
+
+  /* 3 — Hover lift on the interactive cards (desktop / iPad w/ pointer) */
+  .court-card,.match-card{transition:transform .16s ease, box-shadow .16s ease;}
+  @media (hover:hover){
+    .court-card:hover,
+    .match-card.upcoming:hover,
+    .match-card.in_progress:hover,
+    .match-card.completed:hover{
+      transform:translateY(-3px);
+      box-shadow:0 12px 28px rgba(0,0,0,.55);
+    }
+  }
+
+  /* 4 — "LIVE" treatment on anything in progress: a breathing glow + a
+         pulsing red dot before the status label, so it reads at a glance */
+  @keyframes livePulse{
+    0%,100%{box-shadow:0 4px 16px rgba(0,0,0,.45), 0 0 0 0 rgba(240,180,0,0);}
+    50%{box-shadow:0 4px 16px rgba(0,0,0,.45), 0 0 0 3px rgba(240,180,0,.22), 0 0 24px rgba(240,180,0,.28);}
+  }
+  .court-card.busy{animation:livePulse 2.3s ease-in-out infinite;}
+  .match-card.in_progress{animation:livePulse 2.6s ease-in-out infinite;}
+  @keyframes liveDot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.25;transform:scale(.65);}}
+  .court-card.busy .court-status::before,
+  .match-card.in_progress .status-pill::before{
+    content:'';display:inline-block;width:7px;height:7px;border-radius:50%;
+    background:#e6483c;margin-right:5px;vertical-align:middle;
+    box-shadow:0 0 6px rgba(230,72,60,.9);
+    animation:liveDot 1s ease-in-out infinite;
+  }
+
+  /* 5 — Prediction buttons become a live, animated split bar: each button's
+         background fills to its vote share (set inline as --pct in JS) */
+  .predict-btn{position:relative;overflow:hidden;z-index:0;}
+  .predict-btn::before{
+    content:'';position:absolute;left:0;top:0;bottom:0;width:var(--pct,0%);z-index:-1;
+    background:linear-gradient(90deg, rgba(255,199,44,.28), rgba(255,199,44,.12));
+    transition:width .55s cubic-bezier(.34,.1,.2,1);
+  }
+  .predict-btn.picked::before{background:linear-gradient(90deg, rgba(22,61,31,.30), rgba(22,61,31,.12));}
+
+  /* 6 — Soft fade/slide when switching tabs */
+  @keyframes tabFade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+  .tab-panel:not(.hidden){animation:tabFade .26s ease both;}
+
+  /* 7 — Podium steps rise into place (gold last & tallest, for drama) */
+  @keyframes podiumRise{from{opacity:0;transform:translateY(26px);}to{opacity:1;transform:none;}}
+  .podium-place{animation:podiumRise .6s cubic-bezier(.2,.85,.25,1) both;}
+  .podium-place.bronze{animation-delay:.08s;}
+  .podium-place.silver{animation-delay:.18s;}
+  .podium-place.gold{animation-delay:.32s;}
+
+  /* 8 — One-time pop on the champion reveal emoji/name */
+  @keyframes championPop{0%{transform:scale(.4);opacity:0;}60%{transform:scale(1.12);opacity:1;}100%{transform:scale(1);}}
+  #championScreenOverlay:not(.hidden) .champion-emoji{animation:championPop .7s cubic-bezier(.2,.8,.2,1) both;}
+
+  /* 9 — Accessibility: honour users who ask for less motion */
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}
+  }
 </style>
 </head>
 <body>
@@ -2361,8 +2449,8 @@ function predictionBlockHtml(match){
   return `
     <div class="predict-block">
       <div class="predict-row" data-predict-match="${match.id}">
-        <button class="predict-btn ${myPick==='team1'?'picked':''}" data-pick="team1">${escapeHtml(teamName(match.team1Id))} · ${pct('team1')}%</button>
-        <button class="predict-btn ${myPick==='team2'?'picked':''}" data-pick="team2">${escapeHtml(teamName(match.team2Id))} · ${pct('team2')}%</button>
+        <button class="predict-btn ${myPick==='team1'?'picked':''}" data-pick="team1" style="--pct:${pct('team1')}%">${escapeHtml(teamName(match.team1Id))} · ${pct('team1')}%</button>
+        <button class="predict-btn ${myPick==='team2'?'picked':''}" data-pick="team2" style="--pct:${pct('team2')}%">${escapeHtml(teamName(match.team2Id))} · ${pct('team2')}%</button>
       </div>
       ${total ? `<div class="predict-total">${total} pronostic${total>1?'s':''}</div>` : `<div class="predict-total">Sois le premier à pronostiquer !</div>`}
     </div>
