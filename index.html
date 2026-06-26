@@ -641,8 +641,8 @@
       </div>
 
       <div class="card" id="deviceLoginsCard">
-        <h2>📱 Appareils connectés</h2>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Nombre d'appareils ayant choisi un rôle sur ce tournoi (compté une fois par appareil, selon son rôle actuel).</p>
+        <h2>📱 Appareils enregistrés</h2>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Nombre cumulatif d'appareils ayant choisi un rôle (compté une fois par appareil, selon son rôle actuel).</p>
         <div class="device-stats-grid">
           <div class="device-stat"><span class="device-stat-num" id="deviceStatTotal">0</span><span class="device-stat-label">Total</span></div>
           <div class="device-stat"><span class="device-stat-num" id="deviceStatAdmin">0</span><span class="device-stat-label">Admin</span></div>
@@ -1337,6 +1337,10 @@ function init(){
   try{ currentRole = localStorage.getItem(ROLE_KEY); }catch(e){ currentRole = null; }
   updateRoleBadge();
   if(currentRole){
+    // A returning device (role already in localStorage) never goes back through
+    // setRole(), so without this it would never be counted in /deviceLogins —
+    // re-register it here too, refreshing its lastSeen on every visit.
+    registerDeviceLogin(currentRole);
     applyRolePermissions();
     showStageScreen();
   } else {
