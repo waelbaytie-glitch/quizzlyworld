@@ -450,6 +450,10 @@
     background:var(--panel2);color:var(--accent);border:1px solid var(--accent);
     padding:4px 12px;border-radius:20px;letter-spacing:.3px;
   }
+  .device-stats-grid{display:flex;gap:10px;flex-wrap:wrap;}
+  .device-stat{flex:1;min-width:70px;text-align:center;background:var(--panel2);border-radius:10px;padding:12px 8px;}
+  .device-stat-num{display:block;font-size:26px;font-weight:800;color:var(--accent);}
+  .device-stat-label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;}
 
   .role-card{max-width:380px;margin:40px auto;text-align:center;}
   .role-card h2{justify-content:center;}
@@ -633,6 +637,17 @@
         <div class="actions-row" style="justify-content:flex-start;margin-top:0;">
           <button class="btn-primary" id="downloadResultsImageBtn">📸 Télécharger l'image du podium</button>
           <button class="btn-secondary" id="printResultsBtn">🖨️ Imprimer / Enregistrer en PDF</button>
+        </div>
+      </div>
+
+      <div class="card" id="deviceLoginsCard">
+        <h2>📱 Appareils connectés</h2>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Nombre d'appareils ayant choisi un rôle sur ce tournoi (compté une fois par appareil, selon son rôle actuel).</p>
+        <div class="device-stats-grid">
+          <div class="device-stat"><span class="device-stat-num" id="deviceStatTotal">0</span><span class="device-stat-label">Total</span></div>
+          <div class="device-stat"><span class="device-stat-num" id="deviceStatAdmin">0</span><span class="device-stat-label">Admin</span></div>
+          <div class="device-stat"><span class="device-stat-num" id="deviceStatJoueur">0</span><span class="device-stat-label">Joueur</span></div>
+          <div class="device-stat"><span class="device-stat-num" id="deviceStatDisplay">0</span><span class="device-stat-label">Affichage</span></div>
         </div>
       </div>
     </div>
@@ -822,6 +837,7 @@ function defaultState(){
     knockout: null,  // bracket structure once generated
     songs: DEFAULT_SONGS.map((s, i) => ({ id: uid('song'), suggererPar: s.suggererPar, nom: s.nom, artiste: s.artiste, joue: false, ts: i })), // {id, suggererPar, nom, artiste, joue} — music suggestions; joue=true means already played
     predictions: {}, // { [matchId]: { [voterId]: 'team1'|'team2' } } — synced separately, see initFirebase()
+    deviceLogins: {}, // { [voterId]: {role, lastSeen} } — synced separately, see initFirebase()
     activeTab: 'courts'
   };
 }
@@ -872,6 +888,9 @@ let songsLoaded = false;
 let predictionsRef = null;
 let predictionsReady = false;
 const VOTER_ID_KEY = 'bvt_voter_id_v1';
+
+let deviceLoginsRef = null;
+let deviceLoginsReady = false;
 function getVoterId(){
   let id = null;
   try{ id = localStorage.getItem(VOTER_ID_KEY); }catch(e){}
@@ -974,6 +993,16 @@ function initFirebase(){
       state.predictions = snapshot.val() || {};
       renderMatchesView();
       renderCourtsView(); // predictions also show on the Courts tab — see castPrediction()
+    });
+
+    // One entry per device (keyed by the same persistent id used for predictions),
+    // overwritten with its latest role — so a device that switches role is still
+    // only counted once, under whichever role it's currently in.
+    deviceLoginsRef = firebase.database().ref('deviceLogins');
+    deviceLoginsReady = true;
+    deviceLoginsRef.on('value', snapshot=>{
+      state.deviceLogins = snapshot.val() || {};
+      renderDeviceLoginsView();
     });
 
     tournamentRef = firebase.database().ref('tournament');
@@ -1176,9 +1205,29 @@ function updateRoleBadge(){
   badge.classList.toggle('hidden', !label);
 }
 
+function registerDeviceLogin(role){
+  if(!deviceLoginsReady) return; // no Firebase configured — nothing to count across devices
+  deviceLoginsRef.child(getVoterId()).set({ role, lastSeen: Date.now() });
+}
+
+function renderDeviceLoginsView(){
+  const totalEl = document.getElementById('deviceStatTotal');
+  if(!totalEl) return; // tab not in the DOM yet, or running outside a browser (tests)
+  const logins = state.deviceLogins || {};
+  const counts = { admin: 0, joueur: 0, display: 0 };
+  Object.values(logins).forEach(entry=>{
+    if(entry && counts[entry.role] != null) counts[entry.role]++;
+  });
+  totalEl.textContent = String(Object.keys(logins).length);
+  document.getElementById('deviceStatAdmin').textContent = String(counts.admin);
+  document.getElementById('deviceStatJoueur').textContent = String(counts.joueur);
+  document.getElementById('deviceStatDisplay').textContent = String(counts.display);
+}
+
 function setRole(role){
   currentRole = role;
   try{ localStorage.setItem(ROLE_KEY, role); }catch(e){}
+  registerDeviceLogin(role);
   applyRolePermissions();
   updateRoleBadge();
   showStageScreen();
@@ -1223,6 +1272,7 @@ function applyRolePermissions(){
   document.getElementById('clearMatchBtn').classList.toggle('hidden', !isAdmin());
   document.getElementById('saveMatchBtn').classList.toggle('hidden', !isAdmin());
   document.getElementById('resultsShareCard').classList.toggle('hidden', !isAdmin());
+  document.getElementById('deviceLoginsCard').classList.toggle('hidden', !isAdmin());
 }
 
 // Single source of truth for which of the 3 top-level screens is visible, based
@@ -1280,6 +1330,7 @@ function init(){
   state = loaded || defaultState();
   if(!state.songs) state.songs = [];
   if(!state.predictions) state.predictions = {};
+  if(!state.deviceLogins) state.deviceLogins = {};
   migrateTeamEmojis();
   initFirebase();
   wireGlobalEvents();
@@ -2129,6 +2180,7 @@ function renderAll(){
   renderRulesView();
   renderMusicView();
   renderExportView();
+  renderDeviceLoginsView();
 }
 
 /* ===================== RENDER: TEAMS ROSTER ===================== */
