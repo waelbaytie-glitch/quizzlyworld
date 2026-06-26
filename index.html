@@ -941,6 +941,29 @@ function jsonForCompare(value){
   return JSON.stringify(stripNullsForCompare(value));
 }
 
+// Firebase writes return a promise that only REJECTS on a real failure (permission
+// denied, invalid data) — offline writes stay pending and replay on reconnect, so a
+// rejection here is worth surfacing. Returns a .catch handler so call sites stay terse.
+function logFirebaseError(label){
+  return err => {
+    console.error('Firebase write failed (' + label + ')', err);
+    showToast('⚠️ Échec de synchro (' + label + ')');
+  };
+}
+
+// Live connection indicator: Firebase exposes /.info/connected (true/false) locally,
+// so the admin can SEE that sync is healthy rather than guessing. Updates the same
+// note line the Musique tab already shows.
+function watchFirebaseConnection(){
+  const note = document.getElementById('songsSyncNote');
+  firebase.database().ref('.info/connected').on('value', snap=>{
+    const connected = snap.val() === true;
+    if(note) note.textContent = connected
+      ? '🟢 Synchronisé en direct — visible par tout le monde.'
+      : '🟠 Hors ligne — les changements seront synchronisés à la reconnexion.';
+  });
+}
+
 // Debounced so rapid edits (e.g. typing a team name) don't fire one Firebase write
 // per keystroke — only the settled value goes out, ~350ms after the last change.
 function scheduleTournamentSync(){
@@ -956,7 +979,7 @@ function pushTournamentState(){
   if(json === lastSyncedTournamentJSON) return; // nothing actually changed
   lastSyncedTournamentJSON = json;
   payload.updatedAt = lastAppliedUpdatedAt = Date.now();
-  tournamentRef.set(payload);
+  tournamentRef.set(payload).catch(logFirebaseError('tournoi'));
 }
 
 function initFirebase(){
@@ -971,13 +994,14 @@ function initFirebase(){
     songsRef = firebase.database().ref('songs');
     firebaseReady = true;
     if(note) note.textContent = '🟢 Synchronisé en direct — visible par tout le monde.';
+    watchFirebaseConnection(); // keeps that note in sync with the real connection state
     songsRef.on('value', snapshot=>{
       const val = snapshot.val();
       if(!val && DEFAULT_SONGS.length){
         // First time this Firebase database is used: seed it with the suggestions
         // already collected before the shared list existed, so they aren't lost.
         // The push() calls below re-trigger this same listener with real data.
-        DEFAULT_SONGS.forEach((s, i) => songsRef.push(Object.assign({ joue: false, ts: i }, s)));
+        DEFAULT_SONGS.forEach((s, i) => songsRef.push(Object.assign({ joue: false, ts: i }, s)).catch(logFirebaseError('chanson')));
         return;
       }
       state.songs = Object.keys(val || {})
@@ -1072,7 +1096,7 @@ function addSong(){
   if(!nom || !artiste){ showToast('Ajoute au moins le titre et l\'artiste'); return; }
   const song = { suggererPar: parInput.value.trim() || 'Anonyme', nom, artiste, joue: false, ts: Date.now() };
   if(firebaseReady){
-    songsRef.push(song);
+    songsRef.push(song).catch(logFirebaseError('chanson'));
   } else {
     state.songs.push(Object.assign({ id: uid('song') }, song));
     saveState();
@@ -1089,7 +1113,7 @@ function toggleSongJoue(id){
   if(!song) return;
   const joue = !song.joue;
   if(firebaseReady){
-    songsRef.child(id).update({ joue });
+    songsRef.child(id).update({ joue }).catch(logFirebaseError('chanson'));
   } else {
     song.joue = joue;
     saveState();
@@ -1100,7 +1124,7 @@ function toggleSongJoue(id){
 function removeSong(id){
   if(firebaseReady && !songsLoaded){ showToast('Chargement en cours, réessaie dans un instant'); return; }
   if(firebaseReady){
-    songsRef.child(id).remove();
+    songsRef.child(id).remove().catch(logFirebaseError('chanson'));
   } else {
     state.songs = state.songs.filter(s => s.id !== id);
     saveState();
@@ -1207,7 +1231,7 @@ function updateRoleBadge(){
 
 function registerDeviceLogin(role){
   if(!deviceLoginsReady) return; // no Firebase configured — nothing to count across devices
-  deviceLoginsRef.child(getVoterId()).set({ role, lastSeen: Date.now() });
+  deviceLoginsRef.child(getVoterId()).set({ role, lastSeen: Date.now() }).catch(logFirebaseError('appareils'));
 }
 
 function renderDeviceLoginsView(){
@@ -1724,6 +1748,14 @@ function recalcMatchStatus(match){
   }
 }
 
+// Keeps state.stage honest between 'groups' and 'knockout' (the 'setup'/'done'
+// endpoints are owned by start/reset and the final's completion). Without this the
+// stage stayed 'groups' for the whole bracket phase.
+function updateStageProgress(){
+  if(state.stage === 'setup' || state.stage === 'done') return;
+  state.stage = (state.knockout && allGroupsComplete()) ? 'knockout' : 'groups';
+}
+
 function onMatchCompleted(match){
   freeCourtForMatch(match);
   if(match.stage === 'final'){
@@ -1735,17 +1767,19 @@ function onMatchCompleted(match){
   }
   syncKnockoutSlots();
   assignMatchesToFreeCourts();
+  updateStageProgress();
 }
 
 function onMatchUncompleted(match){
   // syncKnockoutSlots() recomputes every not-yet-started knockout match's teams from
   // scratch, so reverting a result here naturally clears any slot that depended on it
   // — no separate "undo propagation" bookkeeping needed.
-  syncKnockoutSlots();
-  assignMatchesToFreeCourts();
   if(match.stage === 'final' && state.stage === 'done'){
     state.stage = 'knockout';
   }
+  syncKnockoutSlots();
+  assignMatchesToFreeCourts();
+  updateStageProgress();
 }
 
 /* ===================== CONFETTI & CHAMPION CELEBRATION ===================== */
@@ -2273,7 +2307,7 @@ function groupName(groupId){
 function castPrediction(matchId, pick){
   const voterId = getVoterId();
   if(predictionsReady){
-    predictionsRef.child(matchId).child(voterId).set(pick);
+    predictionsRef.child(matchId).child(voterId).set(pick).catch(logFirebaseError('pronostic'));
   } else {
     state.predictions[matchId] = state.predictions[matchId] || {};
     state.predictions[matchId][voterId] = pick;
@@ -2899,6 +2933,12 @@ function performReset(){
   state = defaultState();
   lastSyncedTournamentJSON = null;
   pushTournamentState();
+  // The device-login tally is "since this tournament" — wipe it on reset, then
+  // re-register this device so the admin doing the reset is still counted.
+  if(deviceLoginsReady){
+    deviceLoginsRef.set(null).catch(logFirebaseError('reset deviceLogins'));
+    if(currentRole) registerDeviceLogin(currentRole);
+  }
 }
 
 function resetTournament(){
