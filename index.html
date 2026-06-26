@@ -550,37 +550,49 @@
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}
   }
+
+  /* 10 — Language switch (top-right of the header, visible to everyone) */
+  .lang-switch{position:absolute;top:10px;right:10px;display:flex;gap:4px;z-index:2;}
+  .lang-btn{
+    background:rgba(0,0,0,.25);color:var(--muted);border:1px solid rgba(255,255,255,.16);
+    padding:4px 9px;font-size:12px;font-weight:700;border-radius:8px;line-height:1;
+  }
+  .lang-btn.active{background:var(--accent);color:#163d1f;border-color:var(--accent);}
 </style>
 </head>
 <body>
 
 <div class="container" id="appContainer">
   <header class="app-header">
+    <div class="lang-switch">
+      <button class="lang-btn" data-lang="fr">FR</button>
+      <button class="lang-btn" data-lang="en">EN</button>
+    </div>
     <div class="pcl-badge"><img src="pcl-logo.png" alt="PCL Construction"></div>
     <h1>🏐 Beach Volleyball <span class="amp">&amp; BBQ</span></h1>
-    <div class="sub">L'important c'est de s'amuser !! 🌴</div>
+    <div class="sub" data-i18n="header.sub">L'important c'est de s'amuser !! 🌴</div>
     <div id="currentRoleBadge" class="role-current-badge hidden"></div>
   </header>
 
   <!-- ===================== ROLE SCREEN ===================== -->
   <div id="role-screen">
     <div class="card role-card">
-      <h2>🔑 Qui es-tu ?</h2>
-      <p style="color:var(--muted);font-size:13px;margin-bottom:18px;">Choisis ton rôle pour accéder au site.</p>
+      <h2 data-i18n="role.who">🔑 Qui es-tu ?</h2>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:18px;" data-i18n="role.choose">Choisis ton rôle pour accéder au site.</p>
       <div class="actions-row" style="justify-content:center;margin-top:0;">
-        <button class="btn-secondary" id="roleJoueurBtn">🏐 Joueur</button>
-        <button class="btn-secondary" id="roleAdminBtn">🛠️ Admin</button>
+        <button class="btn-secondary" id="roleJoueurBtn" data-i18n="role.joueur">🏐 Joueur</button>
+        <button class="btn-secondary" id="roleAdminBtn" data-i18n="role.admin">🛠️ Admin</button>
       </div>
       <div id="roleCodeRow" class="role-code-row hidden">
-        <input type="password" id="roleCodeInput" placeholder="Code d'accès" inputmode="numeric" maxlength="6">
-        <button class="btn-primary" id="roleCodeSubmitBtn">Valider</button>
+        <input type="password" id="roleCodeInput" placeholder="Code d'accès" data-i18n-ph="role.codePh" inputmode="numeric" maxlength="6">
+        <button class="btn-primary" id="roleCodeSubmitBtn" data-i18n="common.validate">Valider</button>
       </div>
       <div class="role-reset-zone">
-        <button class="btn-secondary btn-small" id="displayModeBtn">📺 Mode Affichage (iPad)</button>
-        <button class="btn-secondary btn-small" id="showResetRowBtn">⚠ Réinitialiser le tournoi</button>
+        <button class="btn-secondary btn-small" id="displayModeBtn" data-i18n="role.display">📺 Mode Affichage (iPad)</button>
+        <button class="btn-secondary btn-small" id="showResetRowBtn" data-i18n="role.resetBtn">⚠ Réinitialiser le tournoi</button>
         <div id="resetCodeRow" class="role-code-row hidden">
-          <input type="password" id="resetCodeInput" placeholder="Code reset" inputmode="numeric" maxlength="6">
-          <button class="btn-danger" id="resetCodeSubmitBtn">Réinitialiser</button>
+          <input type="password" id="resetCodeInput" placeholder="Code reset" data-i18n-ph="role.resetCodePh" inputmode="numeric" maxlength="6">
+          <button class="btn-danger" id="resetCodeSubmitBtn" data-i18n="common.reset">Réinitialiser</button>
         </div>
       </div>
     </div>
@@ -589,8 +601,8 @@
   <!-- ===================== PLAYER WAITING SCREEN ===================== -->
   <div id="player-waiting-screen" class="hidden">
     <div class="card role-card">
-      <h2>⏳ En attente...</h2>
-      <p style="color:var(--muted);">L'organisateur prépare encore les équipes — reviens dans un instant !</p>
+      <h2 data-i18n="wait.title">⏳ En attente...</h2>
+      <p style="color:var(--muted);" data-i18n="wait.body">L'organisateur prépare encore les équipes — reviens dans un instant !</p>
     </div>
   </div>
 
@@ -598,18 +610,18 @@
   <div id="setup-screen">
 
     <div class="card">
-      <h2>1. Tournament Settings</h2>
+      <h2 data-i18n="setup.settings">1. Tournament Settings</h2>
       <div class="field-row">
         <div class="field">
-          <label for="numTeamsInput">Number of teams (2–30)</label>
+          <label for="numTeamsInput" data-i18n="setup.numTeams">Number of teams (2–30)</label>
           <input type="number" id="numTeamsInput" min="2" max="30" value="10">
         </div>
         <div class="field">
-          <label>Number of courts</label>
+          <label data-i18n="setup.numCourts">Number of courts</label>
           <input type="number" id="numCourtsInput" min="1" max="12" value="5">
         </div>
         <div class="field">
-          <label>Points per game</label>
+          <label data-i18n="setup.points">Points per game</label>
           <div class="seg" id="pointsSeg">
             <button data-points="15" class="active">15 (cap 17)</button>
             <button data-points="21">21 (cap 23)</button>
@@ -618,8 +630,8 @@
       </div>
       <div class="field-row">
         <div class="field" style="flex:1 1 100%;">
-          <label>Format</label>
-          <div style="font-size:13px;color:var(--muted);background:var(--panel2);padding:8px 10px;border-radius:8px;">
+          <label data-i18n="setup.format">Format</label>
+          <div style="font-size:13px;color:var(--muted);background:var(--panel2);padding:8px 10px;border-radius:8px;" data-i18n="setup.formatDesc">
             Best of 3 games — first to win 2 games wins the match.
           </div>
         </div>
@@ -628,31 +640,31 @@
     </div>
 
     <div class="card">
-      <h2>2. Teams &amp; Players</h2>
+      <h2 data-i18n="setup.teams">2. Teams &amp; Players</h2>
       <div id="teamList" class="team-list"></div>
     </div>
 
     <div class="actions-row">
-      <button class="btn-primary full-w" id="startTournamentBtn">🚀 Generate &amp; Start Tournament</button>
+      <button class="btn-primary full-w" id="startTournamentBtn" data-i18n="setup.start">🚀 Generate &amp; Start Tournament</button>
     </div>
   </div>
 
   <!-- ===================== TOURNAMENT SCREEN ===================== -->
   <div id="tournament-screen" class="hidden">
     <div class="tabbar">
-      <button data-tab="courts" class="active">Courts</button>
-      <button data-tab="teams">Teams</button>
-      <button data-tab="matches">Matches</button>
-      <button data-tab="standings">Standings</button>
-      <button data-tab="bracket">Bracket</button>
-      <button data-tab="music">Musique</button>
-      <button data-tab="rules">Règles</button>
-      <button data-tab="export">Export</button>
+      <button data-tab="courts" class="active" data-i18n="tab.courts">Courts</button>
+      <button data-tab="teams" data-i18n="tab.teams">Teams</button>
+      <button data-tab="matches" data-i18n="tab.matches">Matches</button>
+      <button data-tab="standings" data-i18n="tab.standings">Standings</button>
+      <button data-tab="bracket" data-i18n="tab.bracket">Bracket</button>
+      <button data-tab="music" data-i18n="tab.music">Musique</button>
+      <button data-tab="rules" data-i18n="tab.rules">Règles</button>
+      <button data-tab="export" data-i18n="tab.export">Export</button>
     </div>
 
     <div id="tab-courts" class="tab-panel">
       <div class="card">
-        <h2>🏟️ Live Court View</h2>
+        <h2 data-i18n="courts.title">🏟️ Live Court View</h2>
         <div id="courtsGrid" class="courts-grid"></div>
       </div>
     </div>
@@ -671,37 +683,37 @@
 
     <div id="tab-bracket" class="tab-panel hidden">
       <div class="card">
-        <h2>🏆 Elimination Bracket</h2>
+        <h2 data-i18n="bracket.title">🏆 Elimination Bracket</h2>
         <div id="bracketContainer"></div>
       </div>
     </div>
 
     <div id="tab-music" class="tab-panel hidden">
       <div class="card">
-        <h2>🎵 Suggérer une chanson</h2>
+        <h2 data-i18n="music.suggest">🎵 Suggérer une chanson</h2>
         <div class="field-row">
           <div class="field">
-            <label for="songSuggererPar">Suggéré par</label>
-            <input type="text" id="songSuggererPar" placeholder="Ton nom" maxlength="40">
+            <label for="songSuggererPar" data-i18n="music.by">Suggéré par</label>
+            <input type="text" id="songSuggererPar" placeholder="Ton nom" data-i18n-ph="music.yourName" maxlength="40">
           </div>
           <div class="field">
-            <label for="songNom">Nom de la chanson</label>
-            <input type="text" id="songNom" placeholder="Titre" maxlength="80">
+            <label for="songNom" data-i18n="music.songName">Nom de la chanson</label>
+            <input type="text" id="songNom" placeholder="Titre" data-i18n-ph="music.titlePh" maxlength="80">
           </div>
           <div class="field">
-            <label for="songArtiste">Artiste</label>
-            <input type="text" id="songArtiste" placeholder="Artiste" maxlength="80">
+            <label for="songArtiste" data-i18n="music.artist">Artiste</label>
+            <input type="text" id="songArtiste" placeholder="Artiste" data-i18n-ph="music.artist" maxlength="80">
           </div>
         </div>
         <div class="actions-row" style="justify-content:flex-start;margin-top:0;">
-          <button class="btn-primary" id="addSongBtn">+ Ajouter à la playlist</button>
+          <button class="btn-primary" id="addSongBtn" data-i18n="music.add">+ Ajouter à la playlist</button>
         </div>
         <div id="songsSyncNote" style="font-size:11px;color:var(--muted);margin-top:8px;"></div>
       </div>
 
       <div class="card">
-        <h2>🎶 Playlist suggérée <span id="songsCount" style="color:var(--muted);font-size:11px;font-weight:400;"></span></h2>
-        <div style="font-size:11px;color:var(--muted);margin:-4px 0 10px;">Coche une chanson une fois qu'elle a été jouée.</div>
+        <h2><span data-i18n="music.playlist">🎶 Playlist suggérée</span> <span id="songsCount" style="color:var(--muted);font-size:11px;font-weight:400;"></span></h2>
+        <div style="font-size:11px;color:var(--muted);margin:-4px 0 10px;" data-i18n="music.checkNote">Coche une chanson une fois qu'elle a été jouée.</div>
         <div id="songsListContainer"></div>
       </div>
     </div>
@@ -712,51 +724,51 @@
 
     <div id="tab-export" class="tab-panel hidden">
       <div class="card">
-        <h2>📋 Export Standings</h2>
+        <h2 data-i18n="export.title">📋 Export Standings</h2>
         <div class="actions-row" style="justify-content:flex-start;margin-top:0;margin-bottom:10px;">
-          <button class="btn-secondary" id="copyExportBtn">Copy to clipboard</button>
+          <button class="btn-secondary" id="copyExportBtn" data-i18n="export.copy">Copy to clipboard</button>
         </div>
         <textarea id="export-text" readonly></textarea>
       </div>
 
       <div class="card" id="resultsShareCard">
-        <h2>📣 Partager les résultats</h2>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Pour publier sur Viva Engage ou ailleurs — image du podium prête à poster, ou PDF complet à imprimer/enregistrer.</p>
+        <h2 data-i18n="share.title">📣 Partager les résultats</h2>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:12px;" data-i18n="share.desc">Pour publier sur Viva Engage ou ailleurs — image du podium prête à poster, ou PDF complet à imprimer/enregistrer.</p>
         <div class="actions-row" style="justify-content:flex-start;margin-top:0;">
-          <button class="btn-primary" id="downloadResultsImageBtn">📸 Télécharger l'image du podium</button>
-          <button class="btn-secondary" id="printResultsBtn">🖨️ Imprimer / Enregistrer en PDF</button>
+          <button class="btn-primary" id="downloadResultsImageBtn" data-i18n="share.image">📸 Télécharger l'image du podium</button>
+          <button class="btn-secondary" id="printResultsBtn" data-i18n="share.print">🖨️ Imprimer / Enregistrer en PDF</button>
         </div>
       </div>
 
       <div class="card" id="deviceLoginsCard">
-        <h2>📱 Appareils enregistrés</h2>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Nombre cumulatif d'appareils ayant choisi un rôle (compté une fois par appareil, selon son rôle actuel).</p>
+        <h2 data-i18n="devices.title">📱 Appareils enregistrés</h2>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:12px;" data-i18n="devices.desc">Nombre cumulatif d'appareils ayant choisi un rôle (compté une fois par appareil, selon son rôle actuel).</p>
         <div class="device-stats-grid">
-          <div class="device-stat"><span class="device-stat-num" id="deviceStatTotal">0</span><span class="device-stat-label">Total</span></div>
-          <div class="device-stat"><span class="device-stat-num" id="deviceStatAdmin">0</span><span class="device-stat-label">Admin</span></div>
-          <div class="device-stat"><span class="device-stat-num" id="deviceStatJoueur">0</span><span class="device-stat-label">Joueur</span></div>
-          <div class="device-stat"><span class="device-stat-num" id="deviceStatDisplay">0</span><span class="device-stat-label">Affichage</span></div>
+          <div class="device-stat"><span class="device-stat-num" id="deviceStatTotal">0</span><span class="device-stat-label" data-i18n="devices.total">Total</span></div>
+          <div class="device-stat"><span class="device-stat-num" id="deviceStatAdmin">0</span><span class="device-stat-label" data-i18n="devices.admin">Admin</span></div>
+          <div class="device-stat"><span class="device-stat-num" id="deviceStatJoueur">0</span><span class="device-stat-label" data-i18n="devices.joueur">Joueur</span></div>
+          <div class="device-stat"><span class="device-stat-num" id="deviceStatDisplay">0</span><span class="device-stat-label" data-i18n="devices.display">Affichage</span></div>
         </div>
       </div>
 
       <div class="card" id="codeVersionCard">
-        <h2>🛠️ Version du code</h2>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:8px;">Dernière fois que la page (index.html) a été mise à jour sur le serveur.</p>
+        <h2 data-i18n="version.title">🛠️ Version du code</h2>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:8px;" data-i18n="version.desc">Dernière fois que la page (index.html) a été mise à jour sur le serveur.</p>
         <div id="codeLastUpdated" style="font-size:15px;font-weight:600;color:var(--accent);">—</div>
       </div>
     </div>
 
     <div class="actions-row">
-      <button class="btn-secondary" id="testTournamentBtn">🧪 Tournoi test (diagnostic)</button>
-      <button class="btn-danger" id="resetTournamentBtn">⚠ Reset Tournament</button>
+      <button class="btn-secondary" id="testTournamentBtn" data-i18n="actions.test">🧪 Tournoi test (diagnostic)</button>
+      <button class="btn-danger" id="resetTournamentBtn" data-i18n="actions.reset">⚠ Reset Tournament</button>
     </div>
   </div>
 </div>
 
 <footer class="app-footer">
-  <span>Présenté par</span>
+  <span data-i18n="footer.by">Présenté par</span>
   <img src="pcl-logo.png" alt="PCL Construction">
-  <button class="btn-secondary btn-small switch-role-btn" id="switchRoleBtn">Changer de rôle</button>
+  <button class="btn-secondary btn-small switch-role-btn" id="switchRoleBtn" data-i18n="footer.switch">Changer de rôle</button>
 </footer>
 
 <!-- ===================== MATCH MODAL ===================== -->
@@ -767,14 +779,14 @@
       <button class="modal-close" id="closeMatchModalBtn">✕</button>
     </div>
     <div class="court-select-row">
-      <label style="font-size:12px;color:var(--muted);font-weight:700;">Court</label>
+      <label style="font-size:12px;color:var(--muted);font-weight:700;" data-i18n="modal.court">Court</label>
       <select id="matchCourtSelect"></select>
     </div>
     <div id="gamesContainer"></div>
     <div id="matchWinnerBanner" class="match-winner-banner hidden"></div>
     <div class="actions-row">
-      <button class="btn-secondary" id="clearMatchBtn">Clear scores</button>
-      <button class="btn-primary" id="saveMatchBtn">Save</button>
+      <button class="btn-secondary" id="clearMatchBtn" data-i18n="modal.clear">Clear scores</button>
+      <button class="btn-primary" id="saveMatchBtn" data-i18n="modal.save">Save</button>
     </div>
   </div>
 </div>
@@ -802,6 +814,190 @@
 'use strict';
 /* ===================== CONSTANTS & STATE ===================== */
 const STORAGE_KEY = 'bvt_tournament_state_v1';
+
+/* ===================== I18N (FR / EN) ===================== *
+ * Language is a per-device preference (localStorage, NOT synced via Firebase) so
+ * each visitor reads the site in their own language while sharing the same data.
+ * Stored canonical values (group names "Group X", knockout round names) stay in
+ * their stored form and are translated at RENDER time via tGroupName/tRoundName. */
+const LANG_KEY = 'bvt_lang_v1';
+var lang = 'fr';
+try{ const sl = localStorage.getItem(LANG_KEY); if(sl === 'fr' || sl === 'en') lang = sl; }catch(e){}
+
+const I18N = {
+  'header.sub':        {fr:"L'important c'est de s'amuser !! 🌴", en:"What matters is having fun!! 🌴"},
+  'role.who':          {fr:'🔑 Qui es-tu ?', en:'🔑 Who are you?'},
+  'role.choose':       {fr:'Choisis ton rôle pour accéder au site.', en:'Choose your role to access the site.'},
+  'role.joueur':       {fr:'🏐 Joueur', en:'🏐 Player'},
+  'role.admin':        {fr:'🛠️ Admin', en:'🛠️ Admin'},
+  'role.codePh':       {fr:"Code d'accès", en:'Access code'},
+  'common.validate':   {fr:'Valider', en:'Submit'},
+  'role.display':      {fr:'📺 Mode Affichage (iPad)', en:'📺 Display Mode (iPad)'},
+  'role.resetBtn':     {fr:'⚠ Réinitialiser le tournoi', en:'⚠ Reset tournament'},
+  'role.resetCodePh':  {fr:'Code reset', en:'Reset code'},
+  'common.reset':      {fr:'Réinitialiser', en:'Reset'},
+  'wait.title':        {fr:'⏳ En attente...', en:'⏳ Waiting...'},
+  'wait.body':         {fr:"L'organisateur prépare encore les équipes — reviens dans un instant !", en:'The organizer is still setting up the teams — check back in a moment!'},
+  'setup.settings':    {fr:'1. Réglages du tournoi', en:'1. Tournament Settings'},
+  'setup.numTeams':    {fr:"Nombre d'équipes (2–30)", en:'Number of teams (2–30)'},
+  'setup.numCourts':   {fr:'Nombre de terrains', en:'Number of courts'},
+  'setup.points':      {fr:'Points par set', en:'Points per game'},
+  'setup.format':      {fr:'Format', en:'Format'},
+  'setup.formatDesc':  {fr:'Best of 3 sets — la première équipe à gagner 2 sets remporte le match.', en:'Best of 3 games — first to win 2 games wins the match.'},
+  'setup.teams':       {fr:'2. Équipes & joueurs', en:'2. Teams & Players'},
+  'setup.start':       {fr:'🚀 Générer & démarrer le tournoi', en:'🚀 Generate & Start Tournament'},
+  'tab.courts':        {fr:'Terrains', en:'Courts'},
+  'tab.teams':         {fr:'Équipes', en:'Teams'},
+  'tab.matches':       {fr:'Matchs', en:'Matches'},
+  'tab.standings':     {fr:'Classement', en:'Standings'},
+  'tab.bracket':       {fr:'Tableau', en:'Bracket'},
+  'tab.music':         {fr:'Musique', en:'Music'},
+  'tab.rules':         {fr:'Règles', en:'Rules'},
+  'tab.export':        {fr:'Export', en:'Export'},
+  'courts.title':      {fr:'🏟️ Terrains en direct', en:'🏟️ Live Court View'},
+  'bracket.title':     {fr:'🏆 Tableau à élimination', en:'🏆 Elimination Bracket'},
+  'music.suggest':     {fr:'🎵 Suggérer une chanson', en:'🎵 Suggest a song'},
+  'music.by':          {fr:'Suggéré par', en:'Suggested by'},
+  'music.yourName':    {fr:'Ton nom', en:'Your name'},
+  'music.songName':    {fr:'Nom de la chanson', en:'Song name'},
+  'music.titlePh':     {fr:'Titre', en:'Title'},
+  'music.artist':      {fr:'Artiste', en:'Artist'},
+  'music.add':         {fr:'+ Ajouter à la playlist', en:'+ Add to playlist'},
+  'music.playlist':    {fr:'🎶 Playlist suggérée', en:'🎶 Suggested playlist'},
+  'music.checkNote':   {fr:"Coche une chanson une fois qu'elle a été jouée.", en:'Check a song once it has been played.'},
+  'music.empty':       {fr:'Aucune suggestion pour le moment — sois le premier !', en:'No suggestions yet — be the first!'},
+  'music.suggBy':      {fr:'suggéré par', en:'suggested by'},
+  'music.played':      {fr:'Cocher = déjà jouée', en:'Check = already played'},
+  'common.remove':     {fr:'Retirer', en:'Remove'},
+  'export.title':      {fr:'📋 Exporter le classement', en:'📋 Export Standings'},
+  'export.copy':       {fr:'Copier dans le presse-papiers', en:'Copy to clipboard'},
+  'share.title':       {fr:'📣 Partager les résultats', en:'📣 Share the results'},
+  'share.desc':        {fr:"Pour publier sur Viva Engage ou ailleurs — image du podium prête à poster, ou PDF complet à imprimer/enregistrer.", en:'To post on Viva Engage or elsewhere — a podium image ready to share, or a full PDF to print/save.'},
+  'share.image':       {fr:"📸 Télécharger l'image du podium", en:'📸 Download the podium image'},
+  'share.print':       {fr:'🖨️ Imprimer / Enregistrer en PDF', en:'🖨️ Print / Save as PDF'},
+  'devices.title':     {fr:'📱 Appareils enregistrés', en:'📱 Registered devices'},
+  'devices.desc':      {fr:"Nombre cumulatif d'appareils ayant choisi un rôle (compté une fois par appareil, selon son rôle actuel).", en:'Cumulative number of devices that picked a role (counted once per device, by its current role).'},
+  'devices.total':     {fr:'Total', en:'Total'},
+  'devices.admin':     {fr:'Admin', en:'Admin'},
+  'devices.joueur':    {fr:'Joueur', en:'Player'},
+  'devices.display':   {fr:'Affichage', en:'Display'},
+  'version.title':     {fr:'🛠️ Version du code', en:'🛠️ Code version'},
+  'version.desc':      {fr:'Dernière fois que la page (index.html) a été mise à jour sur le serveur.', en:'Last time the page (index.html) was updated on the server.'},
+  'footer.by':         {fr:'Présenté par', en:'Presented by'},
+  'footer.switch':     {fr:'Changer de rôle', en:'Switch role'},
+  'modal.court':       {fr:'Terrain', en:'Court'},
+  'modal.clear':       {fr:'Effacer les scores', en:'Clear scores'},
+  'modal.save':        {fr:'Enregistrer', en:'Save'},
+  'actions.test':      {fr:'🧪 Tournoi test (diagnostic)', en:'🧪 Test tournament (diagnostic)'},
+  'actions.reset':     {fr:'⚠ Réinitialiser le tournoi', en:'⚠ Reset Tournament'},
+  // dynamic bits
+  'stage.group':       {fr:'Poule', en:'Group'},
+  'stage.round16':     {fr:'Huitièmes', en:'Round of 16'},
+  'stage.quarterfinal':{fr:'Quart de finale', en:'Quarterfinal'},
+  'stage.semifinal':   {fr:'Demi-finale', en:'Semifinal'},
+  'stage.final':       {fr:'Finale', en:'Final'},
+  'stage.third_place': {fr:'3e place', en:'3rd Place'},
+  'status.upcoming':   {fr:'à venir', en:'upcoming'},
+  'status.in_progress':{fr:'en cours', en:'in progress'},
+  'status.completed':  {fr:'terminé', en:'completed'},
+  'court.inProgress':  {fr:'EN COURS', en:'IN PROGRESS'},
+  'court.available':   {fr:'DISPONIBLE', en:'AVAILABLE'},
+  'court.waiting':     {fr:'En attente du prochain match…', en:'Waiting for next match…'},
+  'court.busy':        {fr:'(occupé)', en:'(busy)'},
+  'court.unassigned':  {fr:'Non assigné', en:'Unassigned'},
+  'match.noScores':    {fr:'Pas encore de score', en:'No scores yet'},
+  'common.tbd':        {fr:'À venir', en:'TBD'},
+  'matches.roundRobin':{fr:'Round robin', en:'Round Robin'},
+  'predict.first':     {fr:'Sois le premier à pronostiquer !', en:'Be the first to predict!'},
+  'predict.correct':   {fr:'✅ Bon pronostic !', en:'✅ Good call!'},
+  'predict.wrong':     {fr:'❌ Pronostic manqué', en:'❌ Missed prediction'},
+  'st.team':           {fr:'Équipe', en:'Team'},
+  'st.winPctTitle':    {fr:'Pourcentage de victoires — classement basé sur ce taux car les groupes peuvent avoir des tailles différentes', en:'Win percentage — ranking is based on this rate since groups can be different sizes'},
+  'st.wildcard':       {fr:'Classement wildcard', en:'Wildcard Ranking'},
+  'st.locked':         {fr:'verrouillé', en:'locked'},
+  'st.p':              {fr:'J', en:'P'},
+  'st.w':              {fr:'V', en:'W'},
+  'st.l':              {fr:'D', en:'L'},
+  'st.winPct':         {fr:'%V', en:'%W'},
+  'st.games':          {fr:'Sets', en:'Games'},
+  'st.pts':            {fr:'Pts', en:'Pts'},
+  'st.diff':           {fr:'Diff', en:'Diff'},
+  'roster.namePh':     {fr:"Nom de l'équipe", en:'Team name'},
+  'roster.player':     {fr:'Joueur', en:'Player'},
+  'roster.noPlayers':  {fr:'Aucun joueur listé', en:'No players listed'},
+  'roster.teams':      {fr:'équipes', en:'teams'},
+  'roster.changeEmoji':{fr:"Changer l'emoji de l'équipe", en:'Change the team emoji'},
+  'bracket.empty':     {fr:'Le tableau à élimination apparaîtra ici une fois la phase de poules terminée.', en:'The elimination bracket will appear here once the round robin group stage is complete.'},
+  'round.round16':     {fr:'Huitièmes de finale', en:'Round of 16'},
+  'round.quarterfinal':{fr:'Quarts de finale', en:'Quarterfinal'},
+  'round.semifinal':   {fr:'Demi-finales', en:'Semifinal'},
+  'round.final':       {fr:'Finale', en:'Final'},
+  'round.third':       {fr:'🥉 Petite finale (3e place)', en:'🥉 3rd Place Match'},
+  // toasts / prompts
+  'toast.songAdded':   {fr:'🎵 Chanson ajoutée à la playlist !', en:'🎵 Song added to the playlist!'},
+  'toast.loading':     {fr:'Chargement en cours, réessaie dans un instant', en:'Loading — please try again in a moment'},
+  'toast.badCode':     {fr:'Code incorrect', en:'Incorrect code'},
+  'toast.resetDone':   {fr:'Tournoi réinitialisé pour tout le monde', en:'Tournament reset for everyone'},
+  'toast.teamsRange':  {fr:"Le nombre d'équipes doit être entre 2 et 30", en:'Number of teams must be between 2 and 30'},
+  'toast.nameTeams':   {fr:'Nomme toutes les équipes avant de démarrer', en:'Please name all teams before starting'},
+  'toast.needCourt':   {fr:'Au moins 1 terrain est nécessaire', en:'Need at least 1 court'},
+  'toast.started':     {fr:'Tournoi lancé ! Bonne chance 🏐', en:'Tournament started! Good luck 🏐'},
+  'toast.needDoneImg': {fr:"Le tournoi doit être terminé pour générer cette image", en:'The tournament must be finished to generate this image'},
+  'toast.imgDownloaded':{fr:'📸 Image téléchargée !', en:'📸 Image downloaded!'},
+  'toast.needDonePdf': {fr:'Le tournoi doit être terminé pour générer ce document', en:'The tournament must be finished to generate this document'},
+  'toast.copied':      {fr:'Copié dans le presse-papiers !', en:'Copied to clipboard!'},
+  'prompt.resetCode':  {fr:'Code de réinitialisation requis :', en:'Reset code required:'},
+  'prompt.testCode':   {fr:'Code requis pour générer un tournoi test :', en:'Code required to generate a test tournament:'},
+  'role.badgeAdmin':   {fr:'🛠️ Connecté en Admin', en:'🛠️ Logged in as Admin'},
+  'role.badgeJoueur':  {fr:'🏐 Connecté en Joueur', en:'🏐 Logged in as Player'},
+  'role.badgeDisplay': {fr:'📺 Mode Affichage', en:'📺 Display Mode'},
+  'sync.live':         {fr:'🟢 Synchronisé en direct — visible par tout le monde.', en:'🟢 Live sync — visible to everyone.'},
+  'sync.offline':      {fr:'🟠 Hors ligne — les changements seront synchronisés à la reconnexion.', en:'🟠 Offline — changes will sync when the connection is back.'},
+};
+
+function t(key){
+  const e = I18N[key];
+  return e ? (e[lang] != null ? e[lang] : e.fr) : key;
+}
+// Stored group names look like "Group A"; show "Groupe A" in French.
+function tGroupName(name){
+  if(lang === 'fr' && /^Group\s/.test(name)) return name.replace(/^Group\s/, 'Groupe ');
+  return name;
+}
+// Stored knockout round names are canonical English (or the FR 3rd-place string).
+function tRoundName(name){
+  const map = {
+    'Round of 16':'round.round16', 'Quarterfinal':'round.quarterfinal',
+    'Semifinal':'round.semifinal', 'Final':'round.final'
+  };
+  if(map[name]) return t(map[name]);
+  if(/petite finale|3e place|3rd place/i.test(name)) return t('round.third');
+  return name;
+}
+// Localized ordinal for a group rank: "3e" in French, "3rd" in English.
+function ordRank(n){
+  if(lang === 'fr') return n + 'e';
+  const s = ['th','st','nd','rd'], v = n % 100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+function applyStaticI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
+  document.documentElement.setAttribute('lang', lang);
+}
+function setLang(next){
+  if(next !== 'fr' && next !== 'en') return;
+  lang = next;
+  try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+  document.querySelectorAll('.lang-btn').forEach(b=> b.classList.toggle('active', b.dataset.lang === lang));
+  applyStaticI18n();
+  updateRoleBadge();
+  // Re-render whatever screen is currently up so dynamic strings refresh too.
+  if(typeof currentRole !== 'undefined' && currentRole){
+    if(state && state.stage === 'setup' && isAdmin()) renderSetupScreen();
+    else renderAll();
+  }
+}
 
 function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
 
@@ -1070,9 +1266,7 @@ function watchFirebaseConnection(){
   const note = document.getElementById('songsSyncNote');
   firebase.database().ref('.info/connected').on('value', snap=>{
     const connected = snap.val() === true;
-    if(note) note.textContent = connected
-      ? '🟢 Synchronisé en direct — visible par tout le monde.'
-      : '🟠 Hors ligne — les changements seront synchronisés à la reconnexion.';
+    if(note) note.textContent = connected ? t('sync.live') : t('sync.offline');
   });
 }
 
@@ -1105,7 +1299,7 @@ function initFirebase(){
 
     songsRef = firebase.database().ref('songs');
     firebaseReady = true;
-    if(note) note.textContent = '🟢 Synchronisé en direct — visible par tout le monde.';
+    if(note) note.textContent = t('sync.live');
     watchFirebaseConnection(); // keeps that note in sync with the real connection state
     songsRef.on('value', snapshot=>{
       const val = snapshot.val();
@@ -1206,7 +1400,7 @@ function addSong(){
   const nom = nomInput.value.trim();
   const artiste = artisteInput.value.trim();
   if(!nom || !artiste){ showToast('Ajoute au moins le titre et l\'artiste'); return; }
-  const song = { suggererPar: parInput.value.trim() || 'Anonyme', nom, artiste, joue: false, ts: Date.now() };
+  const song = { suggererPar: parInput.value.trim() || (lang === 'fr' ? 'Anonyme' : 'Anonymous'), nom, artiste, joue: false, ts: Date.now() };
   if(firebaseReady){
     songsRef.push(song).catch(logFirebaseError('chanson'));
   } else {
@@ -1216,11 +1410,11 @@ function addSong(){
   }
   nomInput.value = '';
   artisteInput.value = '';
-  showToast('🎵 Chanson ajoutée à la playlist !');
+  showToast(t('toast.songAdded'));
 }
 
 function toggleSongJoue(id){
-  if(firebaseReady && !songsLoaded){ showToast('Chargement en cours, réessaie dans un instant'); return; }
+  if(firebaseReady && !songsLoaded){ showToast(t('toast.loading')); return; }
   const song = state.songs.find(s => s.id === id);
   if(!song) return;
   const joue = !song.joue;
@@ -1234,7 +1428,7 @@ function toggleSongJoue(id){
 }
 
 function removeSong(id){
-  if(firebaseReady && !songsLoaded){ showToast('Chargement en cours, réessaie dans un instant'); return; }
+  if(firebaseReady && !songsLoaded){ showToast(t('toast.loading')); return; }
   if(firebaseReady){
     songsRef.child(id).remove().catch(logFirebaseError('chanson'));
   } else {
@@ -1249,19 +1443,24 @@ function renderMusicView(){
   if(!container) return;
   const countEl = document.getElementById('songsCount');
   const aJouerCount = state.songs.filter(s => !s.joue).length;
-  if(countEl) countEl.textContent = `(${state.songs.length} suggestion${state.songs.length>1?'s':''}, ${aJouerCount} à jouer)`;
+  if(countEl){
+    const n = state.songs.length;
+    countEl.textContent = lang === 'fr'
+      ? `(${n} suggestion${n>1?'s':''}, ${aJouerCount} à jouer)`
+      : `(${n} suggestion${n>1?'s':''}, ${aJouerCount} to play)`;
+  }
   if(state.songs.length === 0){
-    container.innerHTML = '<div class="empty-note">Aucune suggestion pour le moment — sois le premier !</div>';
+    container.innerHTML = `<div class="empty-note">${t('music.empty')}</div>`;
     return;
   }
   container.innerHTML = state.songs.map(s => `
     <div class="song-item ${s.joue ? 'joue' : ''}">
-      <input type="checkbox" data-song-id="${s.id}" class="song-checkbox" ${s.joue ? 'checked' : ''} title="Cocher = déjà jouée">
+      <input type="checkbox" data-song-id="${s.id}" class="song-checkbox" ${s.joue ? 'checked' : ''} title="${t('music.played')}">
       <div class="song-info">
         <div class="song-title">${escapeHtml(s.nom)} <span class="song-artiste">— ${escapeHtml(s.artiste)}</span></div>
-        <div class="song-meta">suggéré par ${escapeHtml(s.suggererPar)}</div>
+        <div class="song-meta">${t('music.suggBy')} ${escapeHtml(s.suggererPar)}</div>
       </div>
-      <button class="btn-remove" data-remove-id="${s.id}" title="Retirer">✕</button>
+      <button class="btn-remove" data-remove-id="${s.id}" title="${t('common.remove')}">✕</button>
     </div>
   `).join('');
   container.querySelectorAll('.song-checkbox').forEach(cb=>{
@@ -1324,24 +1523,20 @@ function submitRoleCode(){
   if(input.value.trim() === ROLE_CODES[pendingRole]){
     setRole(pendingRole);
   } else {
-    showToast('Code incorrect');
+    showToast(t('toast.badCode'));
     input.value = '';
   }
 }
 
 // Always-visible reminder of which role this device is currently logged in
 // under, since the role screen itself is only seen once, at login.
-const ROLE_BADGE_LABELS = {
-  admin: '🛠️ Connecté en Admin',
-  joueur: '🏐 Connecté en Joueur',
-  display: '📺 Mode Affichage'
-};
+const ROLE_BADGE_KEYS = { admin:'role.badgeAdmin', joueur:'role.badgeJoueur', display:'role.badgeDisplay' };
 function updateRoleBadge(){
   const badge = document.getElementById('currentRoleBadge');
   if(!badge) return;
-  const label = ROLE_BADGE_LABELS[currentRole];
-  badge.textContent = label || '';
-  badge.classList.toggle('hidden', !label);
+  const key = ROLE_BADGE_KEYS[currentRole];
+  badge.textContent = key ? t(key) : '';
+  badge.classList.toggle('hidden', !key);
 }
 
 function registerDeviceLogin(role){
@@ -1372,12 +1567,12 @@ function renderCodeVersion(){
   if(!el) return;
   const raw = document.lastModified;
   const d = raw ? new Date(raw) : null;
-  if(!d || isNaN(d.getTime())){ el.textContent = 'Inconnue'; return; }
-  el.textContent = d.toLocaleString('fr-CA', {
+  if(!d || isNaN(d.getTime())){ el.textContent = lang === 'fr' ? 'Inconnue' : 'Unknown'; return; }
+  el.textContent = d.toLocaleString(lang === 'fr' ? 'fr-CA' : 'en-CA', {
     timeZone: 'America/Toronto',
     dateStyle: 'long',
     timeStyle: 'short'
-  }) + ' (heure de Montréal)';
+  }) + (lang === 'fr' ? ' (heure de Montréal)' : ' (Montréal time)');
 }
 
 function setRole(role){
@@ -1410,13 +1605,13 @@ function toggleResetCodeRow(){
 function submitResetCode(){
   const input = document.getElementById('resetCodeInput');
   if(input.value.trim() !== RESET_CODE){
-    showToast('Code incorrect');
+    showToast(t('toast.badCode'));
     input.value = '';
     return;
   }
   performReset();
   document.getElementById('resetCodeRow').classList.add('hidden');
-  showToast('Tournoi réinitialisé pour tout le monde');
+  showToast(t('toast.resetDone'));
 }
 
 // Admin-only controls that exist as static DOM elements (so a one-time class
@@ -1510,6 +1705,8 @@ function init(){
   migrateTeamEmojis();
   initFirebase();
   wireGlobalEvents();
+  document.querySelectorAll('.lang-btn').forEach(b=> b.classList.toggle('active', b.dataset.lang === lang));
+  applyStaticI18n(); // translate all static markup to the saved language
   try{ currentRole = localStorage.getItem(ROLE_KEY); }catch(e){ currentRole = null; }
   updateRoleBadge();
   if(currentRole){
@@ -1529,11 +1726,18 @@ document.addEventListener('DOMContentLoaded', init);
 function describeFormat(n){
   if(n < 2) return '';
   const plan = bracketPlanForTeamCount(n);
-  const roundName = roundNamesForBracketSize(plan.bracketSize)[0];
-  const groupWord = plan.numGroups === 1 ? 'group' : 'groups';
-  let txt = plan.numGroups + ' ' + groupWord + ', round robin → Top 2 of each group';
+  const roundName = tRoundName(roundNamesForBracketSize(plan.bracketSize)[0]).toUpperCase();
+  if(lang === 'fr'){
+    const gw = plan.numGroups === 1 ? 'groupe' : 'groupes';
+    let txt = plan.numGroups + ' ' + gw + ', round robin → le top 2 de chaque groupe';
+    if(plan.wildcardCount > 0) txt += ' + les ' + plan.wildcardCount + ' meilleure(s) équipe(s) restante(s) (wildcards)';
+    txt += ' avance(nt) ' + (/finale/i.test(roundName) ? 'en ' : 'aux ') + roundName + '.';
+    return txt;
+  }
+  const gw = plan.numGroups === 1 ? 'group' : 'groups';
+  let txt = plan.numGroups + ' ' + gw + ', round robin → Top 2 of each group';
   if(plan.wildcardCount > 0) txt += ' + ' + plan.wildcardCount + ' best remaining team(s) (wildcards)';
-  txt += ' advance to the ' + roundName.toUpperCase() + '.';
+  txt += ' advance to the ' + roundName + '.';
   return txt;
 }
 
@@ -1655,10 +1859,10 @@ function wireSetupEvents(){
 
 function onStartTournament(){
   const n = state.teams.length;
-  if(n < 2 || n > 30){ showToast('Number of teams must be between 2 and 30'); return; }
+  if(n < 2 || n > 30){ showToast(t('toast.teamsRange')); return; }
   const namesFilled = state.teams.every(t=> t.name && t.name.trim().length>0);
-  if(!namesFilled){ showToast('Please name all teams before starting'); return; }
-  if(state.config.numCourts < 1){ showToast('Need at least 1 court'); return; }
+  if(!namesFilled){ showToast(t('toast.nameTeams')); return; }
+  if(state.config.numCourts < 1){ showToast(t('toast.needCourt')); return; }
 
   generateGroups();
   generateGroupMatches();
@@ -1670,7 +1874,7 @@ function onStartTournament(){
   assignMatchesToFreeCourts();
   saveState();
   renderAll();
-  showToast('Tournament started! Good luck 🏐');
+  showToast(t('toast.started'));
 }
 /* ===================== GROUP & SCHEDULE GENERATION ===================== */
 // One more group every ~4 extra teams (capped at 8 groups for the max of 30 teams),
@@ -1832,7 +2036,9 @@ function assignMatchesToFreeCourts(){
     busy.add(match.team1Id);
     busy.add(match.team2Id);
     if(match.stage !== 'group'){
-      showToast('🏐 ' + stageLabel(match.stage) + ' prêt : ' + teamName(match.team1Id) + ' vs ' + teamName(match.team2Id) + ' !');
+      showToast(lang === 'fr'
+        ? '🏐 ' + stageLabel(match.stage) + ' prêt : ' + teamName(match.team1Id) + ' vs ' + teamName(match.team2Id) + ' !'
+        : '🏐 ' + stageLabel(match.stage) + ' ready: ' + teamName(match.team1Id) + ' vs ' + teamName(match.team2Id) + '!');
     }
   }
 }
@@ -2036,13 +2242,13 @@ function renderCourtSelect(match){
   sel.innerHTML = '';
   const noneOpt = document.createElement('option');
   noneOpt.value = '';
-  noneOpt.textContent = 'Unassigned';
+  noneOpt.textContent = t('court.unassigned');
   sel.appendChild(noneOpt);
   state.courts.forEach(c=>{
     const opt = document.createElement('option');
     opt.value = c.id;
     const occupiedByOther = c.matchId && c.matchId !== match.id;
-    opt.textContent = c.name + (occupiedByOther ? ' (busy)' : '');
+    opt.textContent = c.name + (occupiedByOther ? ' ' + t('court.busy') : '');
     opt.disabled = !!occupiedByOther;
     sel.appendChild(opt);
   });
@@ -2086,7 +2292,7 @@ function renderGamesContainer(match){
         <span class="score-vs">–</span>
         <input type="number" min="0" class="score-input" data-game="${i}" data-team="team2" value="${g.team2 ?? ''}" placeholder="0">
       </div>
-      <span class="locked-label" style="font-size:11px;color:var(--muted);">locked</span>
+      <span class="locked-label" style="font-size:11px;color:var(--muted);">${t('st.locked')}</span>
     `;
     container.appendChild(row);
   }
@@ -2126,7 +2332,9 @@ function updateGame3LockState(match){
 function updateWinnerBanner(match){
   const banner = document.getElementById('matchWinnerBanner');
   if(match.winnerId){
-    banner.textContent = '🏆 ' + teamName(match.winnerId) + ' wins the match!';
+    banner.textContent = lang === 'fr'
+      ? '🏆 ' + teamName(match.winnerId) + ' remporte le match !'
+      : '🏆 ' + teamName(match.winnerId) + ' wins the match!';
     banner.classList.remove('hidden');
   } else {
     banner.classList.add('hidden');
@@ -2359,7 +2567,8 @@ function syncKnockoutSlots(){
 }
 
 function stageLabel(stage){
-  return { group:'Group', round16:'Round of 16', quarterfinal:'Quarterfinal', semifinal:'Semifinal', final:'Final', third_place:'3rd Place' }[stage] || stage;
+  const key = 'stage.' + stage;
+  return I18N[key] ? t(key) : stage;
 }
 /* ===================== RENDER: ROOT ===================== */
 function renderAll(){
@@ -2380,7 +2589,7 @@ function teamEmojiBadgeHtml(team){
   // Admin & joueur can retouch the emoji right here; everyone else sees a static
   // badge. The <select> reuses the setup screen's styling.
   if(canEditEmoji()){
-    return `<select class="team-emoji-select roster-emoji-select" data-team-id="${team.id}" title="Changer l'emoji de l'équipe">
+    return `<select class="team-emoji-select roster-emoji-select" data-team-id="${team.id}" title="${t('roster.changeEmoji')}">
         <option value="">—</option>
         ${EMOJI_CHOICES.map(e=>`<option value="${e}" ${team.emoji===e?'selected':''}>${e}</option>`).join('')}
       </select>`;
@@ -2391,20 +2600,20 @@ function teamEmojiBadgeHtml(team){
 function rosterTeamItemHtml(team){
   const admin = isAdmin();
   const nameHtml = admin
-    ? `<input type="text" class="roster-name-input" data-team-id="${team.id}" value="${escapeAttr(team.name)}" placeholder="Nom de l'équipe">`
+    ? `<input type="text" class="roster-name-input" data-team-id="${team.id}" value="${escapeAttr(team.name)}" placeholder="${t('roster.namePh')}">`
     : `<strong style="font-size:15px;">${escapeHtml(team.name)}</strong>`;
 
   let playersHtml;
   if(admin){
     // Always 4 fields — a team may field fewer, that's fine and left unsaid.
     playersHtml = `<div class="players-grid" style="grid-template-columns:1fr 1fr;">${
-      [0,1,2,3].map(p=>`<input type="text" class="roster-player-input" data-team-id="${team.id}" data-p="${p}" value="${escapeAttr((team.players && team.players[p]) || '')}" placeholder="Joueur ${p+1}">`).join('')
+      [0,1,2,3].map(p=>`<input type="text" class="roster-player-input" data-team-id="${team.id}" data-p="${p}" value="${escapeAttr((team.players && team.players[p]) || '')}" placeholder="${t('roster.player')} ${p+1}">`).join('')
     }</div>`;
   } else {
     const players = (team.players || []).filter(p => p && p.trim());
     playersHtml = players.length
       ? `<div class="players-grid" style="grid-template-columns:1fr 1fr;">${players.map(p=>`<div style="font-size:12px;color:var(--muted);padding:4px 8px;background:#0000001a;border-radius:6px;">🙋 ${escapeHtml(p)}</div>`).join('')}</div>`
-      : '<div style="font-size:12px;color:var(--muted);font-style:italic;">Aucun joueur listé</div>';
+      : `<div style="font-size:12px;color:var(--muted);font-style:italic;">${t('roster.noPlayers')}</div>`;
   }
 
   return `
@@ -2425,7 +2634,7 @@ function renderTeamsRosterView(){
     const card = document.createElement('div');
     card.className = 'card';
     const teamsHtml = group.teamIds.map(tid => rosterTeamItemHtml(findTeamById(tid))).join('');
-    card.innerHTML = `<h2>${escapeHtml(group.name)} <span style="color:var(--muted);font-size:12px;font-weight:400;">(${group.teamIds.length} équipes)</span></h2>` +
+    card.innerHTML = `<h2>${escapeHtml(tGroupName(group.name))} <span style="color:var(--muted);font-size:12px;font-weight:400;">(${group.teamIds.length} ${t('roster.teams')})</span></h2>` +
       `<div class="team-list" style="max-height:none;">${teamsHtml}</div>`;
     container.appendChild(card);
   });
@@ -2480,12 +2689,12 @@ function renderCourtsView(){
       card.innerHTML = `
         <div>
           <div class="court-title">${escapeHtml(court.name)}</div>
-          <span class="court-status">IN PROGRESS</span>
+          <span class="court-status">${t('court.inProgress')}</span>
         </div>
         <div class="court-match">
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${stageLabel(match.stage)}${match.groupId ? ' · ' + groupName(match.groupId) : ''}</div>
           <div class="vs">${escapeHtml(teamName(match.team1Id))}<span class="vs-sep">vs</span>${escapeHtml(teamName(match.team2Id))}</div>
-          <div class="game-scores">${miniScoreText(match) || 'No scores yet'}</div>
+          <div class="game-scores">${miniScoreText(match) || t('match.noScores')}</div>
           ${predictionBlockHtml(match)}
         </div>
       `;
@@ -2501,9 +2710,9 @@ function renderCourtsView(){
       card.innerHTML = `
         <div>
           <div class="court-title">${escapeHtml(court.name)}</div>
-          <span class="court-status">AVAILABLE</span>
+          <span class="court-status">${t('court.available')}</span>
         </div>
-        <div class="court-empty">Waiting for next match…</div>
+        <div class="court-empty">${t('court.waiting')}</div>
       `;
     }
     grid.appendChild(card);
@@ -2512,7 +2721,7 @@ function renderCourtsView(){
 
 function groupName(groupId){
   const g = state.groups.find(x => x.id === groupId);
-  return g ? g.name : '';
+  return g ? tGroupName(g.name) : '';
 }
 
 /* ===================== RENDER: MATCHES ===================== */
@@ -2546,7 +2755,7 @@ function predictionBlockHtml(match){
     const winnerSide = match.winnerId === match.team1Id ? 'team1' : 'team2';
     const correct = myPick === winnerSide;
     const detail = total ? ` (${total} vote${total>1?'s':''} — ${pct('team1')}% / ${pct('team2')}%)` : '';
-    return `<div class="predict-block predict-result ${correct?'correct':'wrong'}">${correct ? '✅ Bon pronostic !' : '❌ Pronostic manqué'}${detail}</div>`;
+    return `<div class="predict-block predict-result ${correct?'correct':'wrong'}">${correct ? t('predict.correct') : t('predict.wrong')}${detail}</div>`;
   }
   return `
     <div class="predict-block">
@@ -2554,7 +2763,7 @@ function predictionBlockHtml(match){
         <button class="predict-btn ${myPick==='team1'?'picked':''}" data-pick="team1" style="--pct:${pct('team1')}%">${escapeHtml(teamName(match.team1Id))} · ${pct('team1')}%</button>
         <button class="predict-btn ${myPick==='team2'?'picked':''}" data-pick="team2" style="--pct:${pct('team2')}%">${escapeHtml(teamName(match.team2Id))} · ${pct('team2')}%</button>
       </div>
-      ${total ? `<div class="predict-total">${total} pronostic${total>1?'s':''}</div>` : `<div class="predict-total">Sois le premier à pronostiquer !</div>`}
+      ${total ? `<div class="predict-total">${total} ${lang==='fr' ? ('pronostic'+(total>1?'s':'')) : ('prediction'+(total>1?'s':''))}</div>` : `<div class="predict-total">${t('predict.first')}</div>`}
     </div>
   `;
 }
@@ -2562,8 +2771,8 @@ function predictionBlockHtml(match){
 function matchCardHtml(match){
   const courtTxt = match.courtId ? (state.courts.find(c=>c.id===match.courtId)||{}).name : null;
   const t1ready = !!match.team1Id, t2ready = !!match.team2Id;
-  const t1 = t1ready ? teamName(match.team1Id) : 'TBD';
-  const t2 = t2ready ? teamName(match.team2Id) : 'TBD';
+  const t1 = t1ready ? teamName(match.team1Id) : t('common.tbd');
+  const t2 = t2ready ? teamName(match.team2Id) : t('common.tbd');
   const score = miniScoreText(match);
   const clickable = t1ready && t2ready;
   return `
@@ -2574,7 +2783,7 @@ function matchCardHtml(match){
         <span>${courtTxt ? '📍 ' + escapeHtml(courtTxt) : ''}</span>
       </div>
       <div style="text-align:right;">
-        <div class="status-pill">${match.status.replace('_',' ')}</div>
+        <div class="status-pill">${t('status.' + match.status)}</div>
         ${score ? `<div class="match-score-mini">${escapeHtml(score)}</div>` : ''}
       </div>
       ${clickable ? predictionBlockHtml(match) : ''}
@@ -2591,7 +2800,7 @@ function renderMatchesView(){
     const matches = state.matches.filter(m => m.groupId === group.id).sort((a,b)=>a.order-b.order);
     const block = document.createElement('div');
     block.className = 'card group-block';
-    block.innerHTML = `<h3>${escapeHtml(group.name)} — Round Robin</h3>` + matches.map(matchCardHtml).join('');
+    block.innerHTML = `<h3>${escapeHtml(tGroupName(group.name))} — ${t('matches.roundRobin')}</h3>` + matches.map(matchCardHtml).join('');
     groupStageDiv.appendChild(block);
   });
   container.appendChild(groupStageDiv);
@@ -2601,7 +2810,7 @@ function renderMatchesView(){
       const matches = round.matchIds.map(findMatchById).sort((a,b)=>a.order-b.order);
       const block = document.createElement('div');
       block.className = 'card group-block';
-      block.innerHTML = `<h3>🏆 ${escapeHtml(round.name)}</h3>` + matches.map(matchCardHtml).join('');
+      block.innerHTML = `<h3>🏆 ${escapeHtml(tRoundName(round.name))}</h3>` + matches.map(matchCardHtml).join('');
       container.appendChild(block);
     });
   }
@@ -2646,10 +2855,10 @@ function standingsTableHtml(group, standings){
   }).join('');
   return `
     <div class="card">
-      <h2>${escapeHtml(group.name)}</h2>
+      <h2>${escapeHtml(tGroupName(group.name))}</h2>
       <div class="scroll-x">
         <table class="standings">
-          <thead><tr><th>#</th><th style="text-align:left;">Team</th><th>P</th><th>W</th><th>L</th><th title="Pourcentage de victoires — utilisé pour classer entre groupes de tailles différentes">%V</th><th>Games</th><th>Pts</th><th>Diff</th></tr></thead>
+          <thead><tr><th>#</th><th style="text-align:left;">${t('st.team')}</th><th>${t('st.p')}</th><th>${t('st.w')}</th><th>${t('st.l')}</th><th title="${t('st.winPctTitle')}">${t('st.winPct')}</th><th>${t('st.games')}</th><th>${t('st.pts')}</th><th>${t('st.diff')}</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -2675,17 +2884,18 @@ function renderStandingsView(){
       return `
         <tr class="${qualifies ? 'qualifies' : ''}">
           <td>${i+1}</td>
-          <td class="team-cell">${escapeHtml(teamName(s.teamId))} <span style="color:var(--muted);font-size:11px;">(${escapeHtml(groupName(findTeamGroupId(s.teamId)))} — ${s.rankInGroup}e)</span>${qualifies ? '<span class="qual-tag">Q</span>' : ''}</td>
+          <td class="team-cell">${escapeHtml(teamName(s.teamId))} <span style="color:var(--muted);font-size:11px;">(${escapeHtml(groupName(findTeamGroupId(s.teamId)))} — ${ordRank(s.rankInGroup)})</span>${qualifies ? '<span class="qual-tag">Q</span>' : ''}</td>
           <td>${s.played}</td><td>${s.mw}</td><td>${s.ml}</td><td>${s.played ? Math.round(s.mw / s.played * 100) : 0}%</td><td>${s.gw}-${s.gl}</td><td>${s.pf}-${s.pa}</td><td>${s.pf-s.pa>=0?'+':''}${s.pf-s.pa}</td>
         </tr>
       `;
     }).join('');
+    const advanceNote = lang === 'fr' ? `(les ${wildcardCount} meilleures avancent)` : `(top ${wildcardCount} advance)`;
     container.insertAdjacentHTML('beforeend', `
       <div class="card">
-        <h2>Wildcard Ranking <span style="color:var(--muted);font-size:11px;font-weight:400;">(top ${wildcardCount} advance)</span></h2>
+        <h2>${t('st.wildcard')} <span style="color:var(--muted);font-size:11px;font-weight:400;">${advanceNote}</span></h2>
         <div class="scroll-x">
           <table class="standings">
-            <thead><tr><th>#</th><th style="text-align:left;">Team</th><th>P</th><th>W</th><th>L</th><th title="Pourcentage de victoires — classement basé sur ce taux car les groupes peuvent avoir des tailles différentes">%V</th><th>Games</th><th>Pts</th><th>Diff</th></tr></thead>
+            <thead><tr><th>#</th><th style="text-align:left;">${t('st.team')}</th><th>${t('st.p')}</th><th>${t('st.w')}</th><th>${t('st.l')}</th><th title="${t('st.winPctTitle')}">${t('st.winPct')}</th><th>${t('st.games')}</th><th>${t('st.pts')}</th><th>${t('st.diff')}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -2696,8 +2906,8 @@ function renderStandingsView(){
 
 /* ===================== RENDER: BRACKET ===================== */
 function bracketMatchHtml(match){
-  const t1 = match.team1Id ? teamName(match.team1Id) : 'TBD';
-  const t2 = match.team2Id ? teamName(match.team2Id) : 'TBD';
+  const t1 = match.team1Id ? teamName(match.team1Id) : t('common.tbd');
+  const t2 = match.team2Id ? teamName(match.team2Id) : t('common.tbd');
   const w = match.winnerId;
   return `
     <div class="bracket-match ${match.status}">
@@ -2722,7 +2932,7 @@ function gameScoreSummary(match, side){
 function renderBracketView(){
   const container = document.getElementById('bracketContainer');
   if(!state.knockout){
-    container.innerHTML = '<div class="empty-note">The elimination bracket will appear here once the round robin group stage is complete.</div>';
+    container.innerHTML = `<div class="empty-note">${t('bracket.empty')}</div>`;
     return;
   }
   container.innerHTML = '';
@@ -2732,7 +2942,7 @@ function renderBracketView(){
     const col = document.createElement('div');
     col.className = 'bracket-round';
     const matches = round.matchIds.map(findMatchById);
-    col.innerHTML = `<h4>${escapeHtml(round.name)}</h4>` + matches.map(bracketMatchHtml).join('');
+    col.innerHTML = `<h4>${escapeHtml(tRoundName(round.name))}</h4>` + matches.map(bracketMatchHtml).join('');
     bracket.appendChild(col);
   });
   container.appendChild(bracket);
@@ -2789,6 +2999,9 @@ const FIRST_ROUND_PREP_FR = {
   'Round of 16': 'aux'
 };
 
+const FIRST_ROUND_NOUN_EN = {
+  'Final':'FINAL', 'Semifinal':'SEMIFINALS', 'Quarterfinal':'QUARTERFINALS', 'Round of 16':'ROUND OF 16'
+};
 function renderRulesView(){
   const container = document.getElementById('rulesContainer');
   if(!container || !state.knockout) return;
@@ -2799,82 +3012,117 @@ function renderRulesView(){
   const cap = state.config.pointsPerGame + 2;
   const k = state.knockout; // { rounds, numGroups, bracketSize, wildcardCount }
   const firstRoundName = k.rounds[0].name;
-  const firstRoundNoun = FIRST_ROUND_NOUN_FR[firstRoundName] || firstRoundName.toUpperCase();
+  const fr = lang === 'fr';
+  const firstRoundNoun = fr
+    ? (FIRST_ROUND_NOUN_FR[firstRoundName] || firstRoundName.toUpperCase())
+    : (FIRST_ROUND_NOUN_EN[firstRoundName] || tRoundName(firstRoundName).toUpperCase());
   const firstRoundPrep = FIRST_ROUND_PREP_FR[firstRoundName] || 'aux';
 
-  const groupsListHtml = groups.map(g =>
-    `<li><strong>${escapeHtml(g.name)}</strong> : ${g.teamIds.length} équipes (${g.teamIds.length - 1} match${g.teamIds.length - 1 > 1 ? 's' : ''} de poule chacune)</li>`
+  const groupsListHtml = groups.map(g => fr
+    ? `<li><strong>${escapeHtml(tGroupName(g.name))}</strong> : ${g.teamIds.length} équipes (${g.teamIds.length - 1} match${g.teamIds.length - 1 > 1 ? 's' : ''} de poule chacune)</li>`
+    : `<li><strong>${escapeHtml(tGroupName(g.name))}</strong>: ${g.teamIds.length} teams (${g.teamIds.length - 1} group match${g.teamIds.length - 1 > 1 ? 'es' : ''} each)</li>`
   ).join('');
 
-  let qualifHtml = `Le top 2 de chaque groupe (${k.numGroups} groupe${k.numGroups>1?'s':''})`;
-  if(k.wildcardCount > 0){
-    qualifHtml += ` + les <strong>${k.wildcardCount} meilleures équipes restantes</strong> (peu importe si elles sont 3e, 4e... de leur groupe — des « wildcards » classées toutes ensemble)`;
-  }
-  qualifHtml += ` avancent ${firstRoundPrep} ${firstRoundNoun} (${k.bracketSize} équipes).`;
-  if(k.wildcardCount === 0 && k.numGroups > 1){
-    qualifHtml += ` Pas besoin de wildcard ici : ${k.numGroups} groupes × 2 qualifiés tombe déjà sur un nombre rond pour le tableau.`;
+  let qualifHtml;
+  if(fr){
+    qualifHtml = `Le top 2 de chaque groupe (${k.numGroups} groupe${k.numGroups>1?'s':''})`;
+    if(k.wildcardCount > 0) qualifHtml += ` + les <strong>${k.wildcardCount} meilleures équipes restantes</strong> (peu importe si elles sont 3e, 4e... de leur groupe — des « wildcards » classées toutes ensemble)`;
+    qualifHtml += ` avancent ${firstRoundPrep} ${firstRoundNoun} (${k.bracketSize} équipes).`;
+    if(k.wildcardCount === 0 && k.numGroups > 1) qualifHtml += ` Pas besoin de wildcard ici : ${k.numGroups} groupes × 2 qualifiés tombe déjà sur un nombre rond pour le tableau.`;
+  } else {
+    qualifHtml = `The top 2 of each group (${k.numGroups} group${k.numGroups>1?'s':''})`;
+    if(k.wildcardCount > 0) qualifHtml += ` + the <strong>${k.wildcardCount} best remaining team(s)</strong> (no matter whether they finished 3rd, 4th... in their group — "wildcards" ranked all together)`;
+    qualifHtml += ` advance to the ${firstRoundNoun} (${k.bracketSize} teams).`;
+    if(k.wildcardCount === 0 && k.numGroups > 1) qualifHtml += ` No wildcard needed here: ${k.numGroups} groups × 2 qualifiers already lands on a clean bracket size.`;
   }
 
   let critereHtml;
   if(sizesUneven){
-    critereHtml = `
+    critereHtml = fr ? `
       <p>⚠️ Avec <strong>${n} équipes</strong> réparties en <strong>${groups.length} groupes</strong>, la division n'est pas parfaitement égale : ${sizes.join(' / ')} équipes selon le groupe. Une équipe d'un groupe à ${Math.max(...sizes)} joue donc <strong>${Math.max(...sizes)-1} matchs</strong> de poule, contre <strong>${Math.min(...sizes)-1}</strong> pour une équipe d'un groupe à ${Math.min(...sizes)} équipes.</p>
       <p>Sans correction, l'équipe qui joue le plus de matchs aurait plus d'occasions d'accumuler des victoires/points — un avantage qui n'a rien à voir avec son niveau de jeu. C'est pourquoi le classement (notamment pour départager les places de wildcard entre groupes) utilise des <strong>pourcentages</strong> plutôt que des totaux bruts :</p>
+    ` : `
+      <p>⚠️ With <strong>${n} teams</strong> split into <strong>${groups.length} groups</strong>, the division isn't perfectly even: ${sizes.join(' / ')} teams depending on the group. A team in a group of ${Math.max(...sizes)} therefore plays <strong>${Math.max(...sizes)-1} group matches</strong>, versus <strong>${Math.min(...sizes)-1}</strong> for a team in a group of ${Math.min(...sizes)}.</p>
+      <p>Without correction, the team playing more matches would have more chances to pile up wins/points — an edge unrelated to skill. That's why the standings (especially to settle wildcard spots across groups) use <strong>percentages</strong> rather than raw totals:</p>
     `;
   } else if(groups.length > 1){
-    critereHtml = `
-      <p>Ici, les ${groups.length} groupes ont tous la même taille (${sizes[0]} équipes), donc chaque équipe joue exactement le même nombre de matchs de poule. Le classement par pourcentage donne donc le même résultat qu'un classement par totaux bruts — mais la règle s'applique automatiquement si jamais les groupes deviennent inégaux (en cas d'ajout/retrait d'une équipe) :</p>
-    `;
+    critereHtml = fr
+      ? `<p>Ici, les ${groups.length} groupes ont tous la même taille (${sizes[0]} équipes), donc chaque équipe joue exactement le même nombre de matchs de poule. Le classement par pourcentage donne donc le même résultat qu'un classement par totaux bruts — mais la règle s'applique automatiquement si jamais les groupes deviennent inégaux (en cas d'ajout/retrait d'une équipe) :</p>`
+      : `<p>Here the ${groups.length} groups are all the same size (${sizes[0]} teams), so every team plays exactly the same number of group matches. Percentage-based ranking gives the same result as raw totals — but the rule kicks in automatically if the groups ever become uneven (a team added/removed):</p>`;
   } else {
-    critereHtml = `
-      <p>Avec un seul groupe, tout le monde joue le même nombre de matchs — le classement par pourcentage ne change donc rien ici, mais la règle s'applique automatiquement dès que le tournoi compte plusieurs groupes :</p>
-    `;
+    critereHtml = fr
+      ? `<p>Avec un seul groupe, tout le monde joue le même nombre de matchs — le classement par pourcentage ne change donc rien ici, mais la règle s'applique automatiquement dès que le tournoi compte plusieurs groupes :</p>`
+      : `<p>With a single group, everyone plays the same number of matches — so percentage ranking changes nothing here, but the rule applies automatically as soon as there are several groups:</p>`;
   }
 
   const wildcardNote = k.wildcardCount > 0
-    ? `<p style="margin-top:10px;color:var(--muted);font-size:13px;">Ce critère compte surtout pour départager les <strong>${k.wildcardCount} places de wildcard</strong> entre les ${k.numGroups} groupes (onglet Standings, tableau « Wildcard Ranking ») puisque ces équipes ne se sont jamais affrontées directement — et elles ne sortent pas forcément toutes de la 3e place : un groupe plus grand peut repêcher un 4e.</p>`
+    ? (fr
+      ? `<p style="margin-top:10px;color:var(--muted);font-size:13px;">Ce critère compte surtout pour départager les <strong>${k.wildcardCount} places de wildcard</strong> entre les ${k.numGroups} groupes (onglet ${t('tab.standings')}, tableau « ${t('st.wildcard')} ») puisque ces équipes ne se sont jamais affrontées directement — et elles ne sortent pas forcément toutes de la 3e place : un groupe plus grand peut repêcher un 4e.</p>`
+      : `<p style="margin-top:10px;color:var(--muted);font-size:13px;">This mainly matters to settle the <strong>${k.wildcardCount} wildcard spot(s)</strong> across the ${k.numGroups} groups (${t('tab.standings')} tab, "${t('st.wildcard')}" table) since those teams never played each other directly — and they don't all come from 3rd place: a larger group can send a 4th.</p>`)
     : '';
 
   let readyGoHtml;
-  if(k.numGroups === 1){
-    readyGoHtml = `Avec un seul groupe, la finale ne peut être fixée qu'une fois que <strong>toutes les équipes</strong> ont terminé leurs matchs de poule (il n'y a qu'un seul groupe à attendre).`;
-  } else {
-    readyGoHtml = `Avec ${k.numGroups} groupes, chaque match du premier tour (${firstRoundNoun}) ne dépend que de <strong>2 groupes</strong> précis. Dès que ces 2 groupes terminent leurs matchs de poule, le match correspondant est assigné à un terrain libre <strong>immédiatement</strong> — sans attendre les autres groupes.`;
-    if(k.wildcardCount > 0){
-      readyGoHtml += ` Seuls les matchs de wildcards doivent attendre que les ${k.numGroups} groupes soient tous complets, puisqu'il faut comparer les équipes restantes entre tous les groupes.`;
+  if(fr){
+    if(k.numGroups === 1){
+      readyGoHtml = `Avec un seul groupe, la finale ne peut être fixée qu'une fois que <strong>toutes les équipes</strong> ont terminé leurs matchs de poule (il n'y a qu'un seul groupe à attendre).`;
     } else {
-      readyGoHtml += ` Il n'y a pas de wildcard ici, donc tous les matchs démarrent dès que leurs 2 groupes respectifs sont prêts.`;
+      readyGoHtml = `Avec ${k.numGroups} groupes, chaque match du premier tour (${firstRoundNoun}) ne dépend que de <strong>2 groupes</strong> précis. Dès que ces 2 groupes terminent leurs matchs de poule, le match correspondant est assigné à un terrain libre <strong>immédiatement</strong> — sans attendre les autres groupes.`;
+      readyGoHtml += k.wildcardCount > 0
+        ? ` Seuls les matchs de wildcards doivent attendre que les ${k.numGroups} groupes soient tous complets, puisqu'il faut comparer les équipes restantes entre tous les groupes.`
+        : ` Il n'y a pas de wildcard ici, donc tous les matchs démarrent dès que leurs 2 groupes respectifs sont prêts.`;
+    }
+  } else {
+    if(k.numGroups === 1){
+      readyGoHtml = `With a single group, the final can only be set once <strong>every team</strong> has finished its group matches (there's only one group to wait on).`;
+    } else {
+      readyGoHtml = `With ${k.numGroups} groups, each first-round match (${firstRoundNoun}) depends on only <strong>2 specific groups</strong>. As soon as those 2 groups finish their group play, that match is assigned to a free court <strong>immediately</strong> — without waiting on the other groups.`;
+      readyGoHtml += k.wildcardCount > 0
+        ? ` Only the wildcard matches must wait for all ${k.numGroups} groups to finish, since the remaining teams have to be compared across every group.`
+        : ` There are no wildcards here, so every match starts as soon as its 2 groups are ready.`;
     }
   }
 
+  const T = fr ? {
+    format:`📜 Format — ${n} équipes`,
+    formatBody:`Poules en round robin (tout le monde affronte tout le monde dans son groupe), puis phase éliminatoire en matchs à élimination directe (best of 3 sets, ${state.config.pointsPerGame} points par set, cap à ${cap}).`,
+    qualif:"🏅 Qualification pour l'élimination",
+    why:'⚖️ Pourquoi le classement utilise des %',
+    tb:['1. % de victoires (victoires / matchs joués)','2. Différentiel de sets par match joué','3. Différentiel de points par match joué',"4. Ordre alphabétique (cas d'égalité parfaite)"],
+    ready:'🚦 « Match prêt, go » — terrains toujours occupés'
+  } : {
+    format:`📜 Format — ${n} teams`,
+    formatBody:`Round robin pools (everyone plays everyone in their group), then a single-elimination knockout stage (best of 3 games, ${state.config.pointsPerGame} points per game, cap at ${cap}).`,
+    qualif:'🏅 Qualifying for the knockout',
+    why:'⚖️ Why standings use %',
+    tb:['1. Win % (wins / matches played)','2. Game differential per match played','3. Point differential per match played','4. Alphabetical order (perfect tie)'],
+    ready:'🚦 "Ready, go" — courts always busy'
+  };
+
   container.innerHTML = `
     <div class="card">
-      <h2>📜 Format — ${n} équipes</h2>
-      <p>Poules en round robin (tout le monde affronte tout le monde dans son groupe), puis phase éliminatoire en matchs à élimination directe (best of 3 sets, ${state.config.pointsPerGame} points par set, cap à ${cap}).</p>
+      <h2>${T.format}</h2>
+      <p>${T.formatBody}</p>
       <ul style="margin:8px 0 0 18px;padding:0;color:var(--muted);font-size:13px;line-height:1.6;">
         ${groupsListHtml}
       </ul>
     </div>
 
     <div class="card">
-      <h2>🏅 Qualification pour l'élimination</h2>
+      <h2>${T.qualif}</h2>
       <p>${qualifHtml}</p>
     </div>
 
     <div class="card">
-      <h2>⚖️ Pourquoi le classement utilise des %</h2>
+      <h2>${T.why}</h2>
       ${critereHtml}
       <ul style="margin:8px 0 0 18px;padding:0;line-height:1.6;">
-        <li>1. % de victoires (victoires / matchs joués)</li>
-        <li>2. Différentiel de sets par match joué</li>
-        <li>3. Différentiel de points par match joué</li>
-        <li>4. Ordre alphabétique (cas d'égalité parfaite)</li>
+        ${T.tb.map(li=>`<li>${li}</li>`).join('')}
       </ul>
       ${wildcardNote}
     </div>
 
     <div class="card">
-      <h2>🚦 « Match prêt, go » — terrains toujours occupés</h2>
+      <h2>${T.ready}</h2>
       <p>${readyGoHtml}</p>
     </div>
   `;
@@ -2882,43 +3130,55 @@ function renderRulesView(){
 
 /* ===================== RENDER: EXPORT ===================== */
 function buildExportText(){
+  const fr = lang === 'fr';
+  const L = fr ? {
+    title:'TOURNOI BEACH VOLLEYBALL — RÉSUMÉ DU CLASSEMENT',
+    meta:'Équipes', courts:'Terrains', ppg:'Points par set', cap:'cap', bo3:'Best of 3',
+    wildcard:'CLASSEMENT WILDCARD', advance:'avancent', knockout:'PHASE ÉLIMINATOIRE',
+    winner:'Gagnant', champion:'🏆 CHAMPION', third:'🥉 3E PLACE', tbd:'À venir'
+  } : {
+    title:'BEACH VOLLEYBALL TOURNAMENT — STANDINGS SUMMARY',
+    meta:'Teams', courts:'Courts', ppg:'Points per game', cap:'cap', bo3:'Best of 3',
+    wildcard:'WILDCARD RANKING', advance:'advance', knockout:'KNOCKOUT STAGE',
+    winner:'Winner', champion:'🏆 CHAMPION', third:'🥉 3RD PLACE', tbd:'TBD'
+  };
   const lines = [];
-  lines.push('BEACH VOLLEYBALL TOURNAMENT — STANDINGS SUMMARY');
-  lines.push('Teams: ' + state.teams.length + ' | Courts: ' + state.config.numCourts + ' | Points per game: ' + state.config.pointsPerGame + ' (cap ' + (state.config.pointsPerGame+2) + ') | Best of 3');
+  lines.push(L.title);
+  lines.push(L.meta + ': ' + state.teams.length + ' | ' + L.courts + ': ' + state.config.numCourts + ' | ' + L.ppg + ': ' + state.config.pointsPerGame + ' (' + L.cap + ' ' + (state.config.pointsPerGame+2) + ') | ' + L.bo3);
   lines.push('='.repeat(50));
 
   const standingsMap = getAllGroupStandings();
   state.groups.forEach(group=>{
     lines.push('');
-    lines.push(group.name.toUpperCase());
+    lines.push(tGroupName(group.name).toUpperCase());
     lines.push('-'.repeat(30));
     standingsMap[group.id].forEach((s,i)=>{
-      lines.push(`${i+1}. ${teamName(s.teamId)}  W${s.mw}-L${s.ml}  Games ${s.gw}-${s.gl}  Pts ${s.pf}-${s.pa} (${s.pf-s.pa>=0?'+':''}${s.pf-s.pa})`);
+      lines.push(`${i+1}. ${teamName(s.teamId)}  ${t('st.w')}${s.mw}-${t('st.l')}${s.ml}  ${t('st.games')} ${s.gw}-${s.gl}  ${t('st.pts')} ${s.pf}-${s.pa} (${s.pf-s.pa>=0?'+':''}${s.pf-s.pa})`);
     });
   });
 
   const wildcardCount = state.knockout ? state.knockout.wildcardCount : 0;
   if(wildcardCount > 0){
     lines.push('');
-    lines.push('WILDCARD RANKING (top ' + wildcardCount + ' advance)');
+    lines.push(L.wildcard + ' (top ' + wildcardCount + ' ' + L.advance + ')');
     lines.push('-'.repeat(30));
     getAllRemainingTeamsRanked().forEach((s,i)=>{
-      lines.push(`${i+1}. ${teamName(s.teamId)} (${groupName(findTeamGroupId(s.teamId))}, ${s.rankInGroup}e)  W${s.mw}-L${s.ml}  Pts ${s.pf}-${s.pa}`);
+      lines.push(`${i+1}. ${teamName(s.teamId)} (${groupName(findTeamGroupId(s.teamId))}, ${ordRank(s.rankInGroup)})  ${t('st.w')}${s.mw}-${t('st.l')}${s.ml}  ${t('st.pts')} ${s.pf}-${s.pa}`);
     });
   }
 
   if(state.knockout){
     lines.push('');
-    lines.push('KNOCKOUT STAGE');
+    lines.push(L.knockout);
     lines.push('='.repeat(50));
     state.knockout.rounds.forEach(round=>{
       lines.push('');
-      lines.push(round.name.toUpperCase());
+      lines.push(tRoundName(round.name).toUpperCase());
       round.matchIds.map(findMatchById).forEach(m=>{
-        const t1 = m.team1Id ? teamName(m.team1Id) : 'TBD';
-        const t2 = m.team2Id ? teamName(m.team2Id) : 'TBD';
+        const t1 = m.team1Id ? teamName(m.team1Id) : L.tbd;
+        const t2 = m.team2Id ? teamName(m.team2Id) : L.tbd;
         const scores = m.games.filter(g=>gameWinner(g)).map(g=>g.team1+'-'+g.team2).join(', ');
-        const result = m.winnerId ? `→ Winner: ${teamName(m.winnerId)}` : '';
+        const result = m.winnerId ? `→ ${L.winner}: ${teamName(m.winnerId)}` : '';
         lines.push(`${t1} vs ${t2}  ${scores ? '['+scores+']' : ''}  ${result}`);
       });
     });
@@ -2928,10 +3188,10 @@ function buildExportText(){
     const finalMatch = state.matches.find(m => m.stage === 'final');
     lines.push('');
     lines.push('='.repeat(50));
-    lines.push('🏆 CHAMPION: ' + teamName(finalMatch.winnerId));
+    lines.push(L.champion + ': ' + teamName(finalMatch.winnerId));
     const thirdPlaceMatch = state.matches.find(m => m.stage === 'third_place');
     if(thirdPlaceMatch && thirdPlaceMatch.winnerId){
-      lines.push('🥉 3RD PLACE: ' + teamName(thirdPlaceMatch.winnerId));
+      lines.push(L.third + ': ' + teamName(thirdPlaceMatch.winnerId));
     }
   }
 
@@ -2982,7 +3242,7 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines){
 function generateResultsImage(){
   const finalMatch = state.matches.find(m => m.stage === 'final');
   if(!finalMatch || !finalMatch.winnerId){
-    showToast('Le tournoi doit être terminé pour générer cette image');
+    showToast(t('toast.needDoneImg'));
     return;
   }
   const canvas = document.createElement('canvas');
@@ -3009,7 +3269,7 @@ function generateResultsImage(){
   ctx.fillText('🏐 Beach Volleyball & BBQ', canvas.width / 2, 130);
   ctx.fillStyle = '#ffffff';
   ctx.font = "600 30px 'Poppins', sans-serif";
-  ctx.fillText('Résultats du tournoi', canvas.width / 2, 178);
+  ctx.fillText(lang === 'fr' ? 'Résultats du tournoi' : 'Tournament results', canvas.width / 2, 178);
 
   const baseY = 880;
   const stepWidth = 280;
@@ -3048,7 +3308,7 @@ function generateResultsImage(){
 
   ctx.fillStyle = '#9fb8a8';
   ctx.font = "600 26px 'Poppins', sans-serif";
-  ctx.fillText('Merci à toutes les équipes participantes !', canvas.width / 2, baseY + 60);
+  ctx.fillText(lang === 'fr' ? 'Merci à toutes les équipes participantes !' : 'Thanks to all participating teams!', canvas.width / 2, baseY + 60);
   ctx.fillStyle = '#7c9a8a';
   ctx.font = "400 22px 'Poppins', sans-serif";
   const teamNames = state.teams.map(t => (t.emoji ? t.emoji + ' ' : '') + t.name).join('   •   ');
@@ -3056,13 +3316,13 @@ function generateResultsImage(){
 
   ctx.fillStyle = '#5d7c69';
   ctx.font = "400 20px 'Poppins', sans-serif";
-  ctx.fillText('Généré le ' + new Date().toLocaleDateString('fr-CA'), canvas.width / 2, canvas.height - 30);
+  ctx.fillText((lang === 'fr' ? 'Généré le ' : 'Generated on ') + new Date().toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA'), canvas.width / 2, canvas.height - 30);
 
   const link = document.createElement('a');
   link.download = 'resultats-tournoi-pcl.png';
   link.href = canvas.toDataURL('image/png');
   link.click();
-  showToast('📸 Image téléchargée !');
+  showToast(t('toast.imgDownloaded'));
 }
 
 // The browser's own print dialog ("Enregistrer en PDF") needs no library — just a
@@ -3074,19 +3334,24 @@ function buildPrintResultsHtml(){
   if(finalMatch && finalMatch.winnerId){
     const thirdPlaceMatch = state.matches.find(m => m.stage === 'third_place');
     const bronzeName = (thirdPlaceMatch && thirdPlaceMatch.winnerId) ? teamName(thirdPlaceMatch.winnerId) : null;
+    const fr = lang === 'fr';
     podiumHtml = `
       <div class="print-podium">
-        <div><strong>🥈 2e place</strong><br>${escapeHtml(teamName(finalMatch.loserId))}</div>
-        <div><strong>🥇 1ère place</strong><br>${escapeHtml(teamName(finalMatch.winnerId))}</div>
-        ${bronzeName ? `<div><strong>🥉 3e place</strong><br>${escapeHtml(bronzeName)}</div>` : ''}
+        <div><strong>🥈 ${fr?'2e place':'2nd place'}</strong><br>${escapeHtml(teamName(finalMatch.loserId))}</div>
+        <div><strong>🥇 ${fr?'1ère place':'1st place'}</strong><br>${escapeHtml(teamName(finalMatch.winnerId))}</div>
+        ${bronzeName ? `<div><strong>🥉 ${fr?'3e place':'3rd place'}</strong><br>${escapeHtml(bronzeName)}</div>` : ''}
       </div>
     `;
   }
+  const fr = lang === 'fr';
+  const title = fr ? '🏐 Beach Volleyball &amp; BBQ — Résultats du tournoi' : '🏐 Beach Volleyball &amp; BBQ — Tournament results';
+  const gen = (fr ? 'Généré le ' : 'Generated on ') + new Date().toLocaleDateString(fr ? 'fr-CA' : 'en-CA');
+  const details = fr ? 'Détails complets' : 'Full details';
   return `
-    <h1>🏐 Beach Volleyball &amp; BBQ — Résultats du tournoi</h1>
-    <p>PCL Construction — District de Montréal · Généré le ${new Date().toLocaleDateString('fr-CA')}</p>
+    <h1>${title}</h1>
+    <p>PCL Construction — District de Montréal · ${gen}</p>
     ${podiumHtml}
-    <h2>Détails complets</h2>
+    <h2>${details}</h2>
     <pre style="white-space:pre-wrap;font-family:monospace;">${escapeHtml(buildExportText().replace(/\n{2,}/g, '\n'))}</pre>
   `;
 }
@@ -3094,7 +3359,7 @@ function buildPrintResultsHtml(){
 function printResults(){
   const finalMatch = state.matches.find(m => m.stage === 'final');
   if(!finalMatch || !finalMatch.winnerId){
-    showToast('Le tournoi doit être terminé pour générer ce document');
+    showToast(t('toast.needDonePdf'));
     return;
   }
   document.getElementById('printResultsContainer').innerHTML = buildPrintResultsHtml();
@@ -3155,15 +3420,15 @@ function performReset(){
 function resetTournament(){
   // Even an Admin must type the reset code — it's a separate, deliberate action
   // from normal admin editing, not something a misclick should be able to trigger.
-  const code = prompt('Code de réinitialisation requis :');
+  const code = prompt(t('prompt.resetCode'));
   if(code === null) return; // cancelled
   if(code.trim() !== RESET_CODE){
-    showToast('Code incorrect');
+    showToast(t('toast.badCode'));
     return;
   }
   performReset();
   showStageScreen();
-  showToast('Tournoi réinitialisé pour tout le monde');
+  showToast(t('toast.resetDone'));
 }
 
 /* ===================== TEST TOURNAMENT (diagnostic) ===================== */
@@ -3228,10 +3493,10 @@ function runTestTournamentSimulation(){
 }
 
 function testTournamentBtnClick(){
-  const code = prompt('Code requis pour générer un tournoi test :');
+  const code = prompt(t('prompt.testCode'));
   if(code === null) return; // cancelled
   if(code.trim() !== TEST_TOURNAMENT_CODE){
-    showToast('Code incorrect');
+    showToast(t('toast.badCode'));
     return;
   }
   runTestTournamentSimulation();
@@ -3240,6 +3505,10 @@ function testTournamentBtnClick(){
 /* ===================== GLOBAL EVENT WIRING ===================== */
 function wireGlobalEvents(){
   wireSetupEvents();
+
+  document.querySelectorAll('.lang-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> setLang(btn.dataset.lang));
+  });
 
   document.getElementById('roleJoueurBtn').addEventListener('click', ()=> chooseRole('joueur'));
   document.getElementById('roleAdminBtn').addEventListener('click', ()=> chooseRole('admin'));
@@ -3281,10 +3550,10 @@ function wireGlobalEvents(){
     const textarea = document.getElementById('export-text');
     textarea.select();
     try{
-      navigator.clipboard.writeText(textarea.value).then(()=> showToast('Copied to clipboard!'));
+      navigator.clipboard.writeText(textarea.value).then(()=> showToast(t('toast.copied')));
     }catch(e){
       document.execCommand('copy');
-      showToast('Copied to clipboard!');
+      showToast(t('toast.copied'));
     }
   });
 
