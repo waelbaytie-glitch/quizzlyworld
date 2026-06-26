@@ -357,6 +357,19 @@
     font-size:13px;background:#0000002a;border-radius:20px;padding:6px 12px;color:var(--text);
   }
   #confettiCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:60;pointer-events:none;}
+
+  /* ---------- Print / PDF export ---------- */
+  #printResultsContainer{display:none;}
+  #printResultsContainer h1{color:#163d1f;font-size:24px;margin-bottom:2px;}
+  #printResultsContainer h2{color:#163d1f;font-size:18px;margin:18px 0 8px;}
+  #printResultsContainer .print-podium{display:flex;gap:16px;margin:16px 0;}
+  #printResultsContainer .print-podium div{flex:1;text-align:center;border:1px solid #ccc;border-radius:8px;padding:10px;}
+  #printResultsContainer table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13px;}
+  #printResultsContainer th,#printResultsContainer td{border:1px solid #ccc;padding:4px 6px;text-align:left;}
+  @media print{
+    #appContainer{display:none !important;}
+    #printResultsContainer{display:block !important;color:#000;background:#fff;}
+  }
   .game-row{
     display:flex;align-items:center;gap:10px;
     background:var(--panel2);border-radius:10px;padding:10px;margin-bottom:8px;
@@ -424,6 +437,11 @@
     font-size:12px;
   }
   .app-footer img{height:34px;width:auto;}
+  .role-current-badge{
+    display:inline-block;margin-top:8px;font-size:11px;font-weight:700;
+    background:var(--panel2);color:var(--accent);border:1px solid var(--accent);
+    padding:4px 12px;border-radius:20px;letter-spacing:.3px;
+  }
 
   .role-card{max-width:380px;margin:40px auto;text-align:center;}
   .role-card h2{justify-content:center;}
@@ -441,6 +459,7 @@
     <div class="pcl-badge"><img src="pcl-logo.png" alt="PCL Construction"></div>
     <h1>🏐 Beach Volleyball <span class="amp">&amp; BBQ</span></h1>
     <div class="sub">Peu importe ton niveau, l'important c'est de s'amuser ! 🌴</div>
+    <div id="currentRoleBadge" class="role-current-badge hidden"></div>
   </header>
 
   <!-- ===================== ROLE SCREEN ===================== -->
@@ -599,6 +618,15 @@
         </div>
         <textarea id="export-text" readonly></textarea>
       </div>
+
+      <div class="card" id="resultsShareCard">
+        <h2>📣 Partager les résultats</h2>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Pour publier sur Viva Engage ou ailleurs — image du podium prête à poster, ou PDF complet à imprimer/enregistrer.</p>
+        <div class="actions-row" style="justify-content:flex-start;margin-top:0;">
+          <button class="btn-primary" id="downloadResultsImageBtn">📸 Télécharger l'image du podium</button>
+          <button class="btn-secondary" id="printResultsBtn">🖨️ Imprimer / Enregistrer en PDF</button>
+        </div>
+      </div>
     </div>
 
     <div class="actions-row">
@@ -646,6 +674,10 @@
   </div>
 </div>
 <canvas id="confettiCanvas" class="hidden"></canvas>
+
+<!-- Populated on demand by printResults(); only ever shown via the print stylesheet
+     below, so screen visitors never see it. -->
+<div id="printResultsContainer"></div>
 
 <div id="toast" class="toast"></div>
 
@@ -1041,16 +1073,33 @@ function submitRoleCode(){
   }
 }
 
+// Always-visible reminder of which role this device is currently logged in
+// under, since the role screen itself is only seen once, at login.
+const ROLE_BADGE_LABELS = {
+  admin: '🛠️ Connecté en Admin',
+  joueur: '🏐 Connecté en Joueur',
+  display: '📺 Mode Affichage'
+};
+function updateRoleBadge(){
+  const badge = document.getElementById('currentRoleBadge');
+  if(!badge) return;
+  const label = ROLE_BADGE_LABELS[currentRole];
+  badge.textContent = label || '';
+  badge.classList.toggle('hidden', !label);
+}
+
 function setRole(role){
   currentRole = role;
   try{ localStorage.setItem(ROLE_KEY, role); }catch(e){}
   applyRolePermissions();
+  updateRoleBadge();
   showStageScreen();
 }
 
 function switchRole(){
   try{ localStorage.removeItem(ROLE_KEY); }catch(e){}
   currentRole = null;
+  updateRoleBadge();
   showRoleScreen();
 }
 
@@ -1085,6 +1134,7 @@ function applyRolePermissions(){
   document.getElementById('testTournamentBtn').classList.toggle('hidden', !isAdmin());
   document.getElementById('clearMatchBtn').classList.toggle('hidden', !isAdmin());
   document.getElementById('saveMatchBtn').classList.toggle('hidden', !isAdmin());
+  document.getElementById('resultsShareCard').classList.toggle('hidden', !isAdmin());
 }
 
 // Single source of truth for which of the 3 top-level screens is visible, based
@@ -1129,6 +1179,7 @@ function init(){
   initFirebase();
   wireGlobalEvents();
   try{ currentRole = localStorage.getItem(ROLE_KEY); }catch(e){ currentRole = null; }
+  updateRoleBadge();
   if(currentRole){
     applyRolePermissions();
     showStageScreen();
@@ -2455,6 +2506,162 @@ function buildExportText(){
 function renderExportView(){
   document.getElementById('export-text').value = buildExportText();
 }
+
+/* ===================== RESULTS SHARING (image + print/PDF) ===================== */
+function drawRoundedRect(ctx, x, y, w, h, r){
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines){
+  const words = text.split(' ');
+  let line = '';
+  const lines = [];
+  words.forEach(word=>{
+    const test = line ? line + ' ' + word : word;
+    if(ctx.measureText(test).width > maxWidth && line){
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  });
+  if(line) lines.push(line);
+  let toDraw = lines;
+  if(maxLines && lines.length > maxLines){
+    toDraw = lines.slice(0, maxLines);
+    toDraw[maxLines - 1] += '…';
+  }
+  toDraw.forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
+}
+
+// Renders the same podium (gold tallest & centered, silver left, bronze right) as
+// the Bracket tab, but as a standalone shareable PNG — sized for a social feed
+// post (Viva Engage etc.) rather than the app's own layout.
+function generateResultsImage(){
+  const finalMatch = state.matches.find(m => m.stage === 'final');
+  if(!finalMatch || !finalMatch.winnerId){
+    showToast('Le tournoi doit être terminé pour générer cette image');
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  if(typeof canvas.getContext !== 'function') return; // no canvas support
+  canvas.width = 1080;
+  canvas.height = 1350;
+  const ctx = canvas.getContext('2d');
+  if(!ctx) return;
+
+  const thirdPlaceMatch = state.matches.find(m => m.stage === 'third_place');
+  const gold = findTeamById(finalMatch.winnerId);
+  const silver = findTeamById(finalMatch.loserId);
+  const bronze = (thirdPlaceMatch && thirdPlaceMatch.winnerId) ? findTeamById(thirdPlaceMatch.winnerId) : null;
+
+  const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  bg.addColorStop(0, '#051c10');
+  bg.addColorStop(1, '#0a2618');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#FFC72C';
+  ctx.font = "800 52px 'Poppins', sans-serif";
+  ctx.fillText('🏐 Beach Volleyball & BBQ', canvas.width / 2, 130);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = "600 30px 'Poppins', sans-serif";
+  ctx.fillText('Résultats du tournoi', canvas.width / 2, 178);
+
+  const baseY = 880;
+  const stepWidth = 280;
+  const gap = 24;
+  const cardH = 150;
+  const steps = [];
+  if(silver) steps.push({ team: silver, medal: '🥈', rank: 2, height: 200, top: '#d7dedb', bottom: '#9fb0a8', x: canvas.width / 2 - stepWidth - gap });
+  steps.push({ team: gold, medal: '🥇', rank: 1, height: 300, top: '#FFC72C', bottom: '#e6a400', x: canvas.width / 2 - stepWidth / 2 });
+  if(bronze) steps.push({ team: bronze, medal: '🥉', rank: 3, height: 140, top: '#cf9a66', bottom: '#a9703f', x: canvas.width / 2 + stepWidth / 2 + gap });
+
+  steps.forEach(s=>{
+    const cardY = baseY - s.height - cardH - 10;
+    ctx.fillStyle = '#11331f';
+    drawRoundedRect(ctx, s.x, cardY, stepWidth, cardH, 18);
+    ctx.fill();
+    ctx.font = '56px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(s.medal, s.x + stepWidth / 2, cardY + 58);
+    ctx.font = "700 28px 'Poppins', sans-serif";
+    wrapText(ctx, (s.team.emoji ? s.team.emoji + ' ' : '') + s.team.name, s.x + stepWidth / 2, cardY + 108, stepWidth - 24, 32, 2);
+
+    const grad = ctx.createLinearGradient(s.x, baseY - s.height, s.x, baseY);
+    grad.addColorStop(0, s.top);
+    grad.addColorStop(1, s.bottom);
+    ctx.fillStyle = grad;
+    drawRoundedRect(ctx, s.x, baseY - s.height, stepWidth, s.height, 14);
+    ctx.fill();
+    ctx.font = "800 62px 'Poppins', sans-serif";
+    ctx.fillStyle = '#163d1f';
+    ctx.fillText(String(s.rank), s.x + stepWidth / 2, baseY - s.height + 68);
+  });
+
+  ctx.fillStyle = '#9fb8a8';
+  ctx.font = "600 26px 'Poppins', sans-serif";
+  ctx.fillText('Merci à toutes les équipes participantes !', canvas.width / 2, baseY + 60);
+  ctx.fillStyle = '#7c9a8a';
+  ctx.font = "400 22px 'Poppins', sans-serif";
+  const teamNames = state.teams.map(t => (t.emoji ? t.emoji + ' ' : '') + t.name).join('   •   ');
+  wrapText(ctx, teamNames, canvas.width / 2, baseY + 102, canvas.width - 100, 30, 3);
+
+  ctx.fillStyle = '#5d7c69';
+  ctx.font = "400 20px 'Poppins', sans-serif";
+  ctx.fillText('Généré le ' + new Date().toLocaleDateString('fr-CA'), canvas.width / 2, canvas.height - 30);
+
+  const link = document.createElement('a');
+  link.download = 'resultats-tournoi-pcl.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('📸 Image téléchargée !');
+}
+
+// The browser's own print dialog ("Enregistrer en PDF") needs no library — just a
+// dedicated print-only view (see the @media print rules) populated with the full
+// text export plus a quick podium summary on top.
+function buildPrintResultsHtml(){
+  const finalMatch = state.matches.find(m => m.stage === 'final');
+  let podiumHtml = '';
+  if(finalMatch && finalMatch.winnerId){
+    const thirdPlaceMatch = state.matches.find(m => m.stage === 'third_place');
+    const bronzeName = (thirdPlaceMatch && thirdPlaceMatch.winnerId) ? teamName(thirdPlaceMatch.winnerId) : null;
+    podiumHtml = `
+      <div class="print-podium">
+        <div><strong>🥈 2e place</strong><br>${escapeHtml(teamName(finalMatch.loserId))}</div>
+        <div><strong>🥇 1ère place</strong><br>${escapeHtml(teamName(finalMatch.winnerId))}</div>
+        ${bronzeName ? `<div><strong>🥉 3e place</strong><br>${escapeHtml(bronzeName)}</div>` : ''}
+      </div>
+    `;
+  }
+  return `
+    <h1>🏐 Beach Volleyball &amp; BBQ — Résultats du tournoi</h1>
+    <p>Généré le ${new Date().toLocaleDateString('fr-CA')}</p>
+    ${podiumHtml}
+    <h2>Détails complets</h2>
+    <pre style="white-space:pre-wrap;font-family:monospace;font-size:12px;">${escapeHtml(buildExportText())}</pre>
+  `;
+}
+
+function printResults(){
+  const finalMatch = state.matches.find(m => m.stage === 'final');
+  if(!finalMatch || !finalMatch.winnerId){
+    showToast('Le tournoi doit être terminé pour générer ce document');
+    return;
+  }
+  document.getElementById('printResultsContainer').innerHTML = buildPrintResultsHtml();
+  if(typeof window !== 'undefined' && typeof window.print === 'function') window.print();
+}
+
 /* ===================== TABS ===================== */
 // "Mode Affichage" — a public, read-only role meant for a tablet propped up at the
 // event: no codes, no editing (isAdmin() is false for it, same as 'joueur'), just
@@ -2639,6 +2846,9 @@ function wireGlobalEvents(){
       showToast('Copied to clipboard!');
     }
   });
+
+  document.getElementById('downloadResultsImageBtn').addEventListener('click', generateResultsImage);
+  document.getElementById('printResultsBtn').addEventListener('click', printResults);
 }
 
 
