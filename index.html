@@ -367,7 +367,10 @@
   #printResultsContainer table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13px;}
   #printResultsContainer th,#printResultsContainer td{border:1px solid #ccc;padding:4px 6px;text-align:left;}
   @media print{
-    #appContainer{display:none !important;}
+    /* .app-footer (with the "Changer de rôle" button) is a sibling of
+       #appContainer, not a child — hiding only #appContainer left it
+       showing at the top of the printed page. */
+    #appContainer, .app-footer, #championScreenOverlay, #confettiCanvas{display:none !important;}
     #printResultsContainer{display:block !important;color:#000;background:#fff;}
   }
   .game-row{
@@ -889,6 +892,7 @@ function initFirebase(){
     predictionsRef.on('value', snapshot=>{
       state.predictions = snapshot.val() || {};
       renderMatchesView();
+      renderCourtsView(); // predictions also show on the Courts tab — see castPrediction()
     });
 
     tournamentRef = firebase.database().ref('tournament');
@@ -2102,6 +2106,7 @@ function castPrediction(matchId, pick){
     state.predictions[matchId][voterId] = pick;
     saveState();
     renderMatchesView();
+    renderCourtsView();
   }
 }
 
@@ -2589,9 +2594,13 @@ function generateResultsImage(){
   const gap = 24;
   const cardH = 150;
   const steps = [];
-  if(silver) steps.push({ team: silver, medal: '🥈', rank: 2, height: 200, top: '#d7dedb', bottom: '#9fb0a8', x: canvas.width / 2 - stepWidth - gap });
-  steps.push({ team: gold, medal: '🥇', rank: 1, height: 300, top: '#FFC72C', bottom: '#e6a400', x: canvas.width / 2 - stepWidth / 2 });
-  if(bronze) steps.push({ team: bronze, medal: '🥉', rank: 3, height: 140, top: '#cf9a66', bottom: '#a9703f', x: canvas.width / 2 + stepWidth / 2 + gap });
+  // Anchor on gold (centered) and place silver/bronze immediately beside it —
+  // computing silver's x independently from canvas center (as before) put it
+  // 116px too far right, overlapping gold's card.
+  const goldX = canvas.width / 2 - stepWidth / 2;
+  if(silver) steps.push({ team: silver, medal: '🥈', rank: 2, height: 200, top: '#d7dedb', bottom: '#9fb0a8', x: goldX - gap - stepWidth });
+  steps.push({ team: gold, medal: '🥇', rank: 1, height: 300, top: '#FFC72C', bottom: '#e6a400', x: goldX });
+  if(bronze) steps.push({ team: bronze, medal: '🥉', rank: 3, height: 140, top: '#cf9a66', bottom: '#a9703f', x: goldX + stepWidth + gap });
 
   steps.forEach(s=>{
     const cardY = baseY - s.height - cardH - 10;
@@ -2653,6 +2662,7 @@ function buildPrintResultsHtml(){
   }
   return `
     <h1>🏐 Beach Volleyball &amp; BBQ — Résultats du tournoi</h1>
+    <p>PCL Construction — District de Montréal</p>
     <p>Généré le ${new Date().toLocaleDateString('fr-CA')}</p>
     ${podiumHtml}
     <h2>Détails complets</h2>
