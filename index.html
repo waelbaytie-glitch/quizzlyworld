@@ -2060,9 +2060,17 @@ function renderCourtsView(){
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${stageLabel(match.stage)}${match.groupId ? ' · ' + groupName(match.groupId) : ''}</div>
           <div class="vs">${escapeHtml(teamName(match.team1Id))}<span class="vs-sep">vs</span>${escapeHtml(teamName(match.team2Id))}</div>
           <div class="game-scores">${miniScoreText(match) || 'No scores yet'}</div>
+          ${predictionBlockHtml(match)}
         </div>
       `;
       card.addEventListener('click', ()=> openMatchModal(match.id));
+      card.querySelectorAll('.predict-btn').forEach(btn=>{
+        btn.addEventListener('click', e=>{
+          e.stopPropagation(); // don't also open the score modal behind it
+          const matchId = btn.closest('[data-predict-match]').dataset.predictMatch;
+          castPrediction(matchId, btn.dataset.pick);
+        });
+      });
     } else {
       card.innerHTML = `
         <div>
