@@ -1118,11 +1118,14 @@ const DEFAULT_TEAMS = [
   { name: 'The Daltons', players: ['Mikael Lamothe', 'Alex Xin', 'Don Phan', 'Victor Alexandre Frings-Morales'] },
   { name: 'ze best', players: ['Jean-Paul Bou-Sleiman', 'Jeanne Legrand', 'John-Raymark Dela Rosa', 'Florent Blanc'] },
   { name: 'Sunset Smash', players: ['Paula Marino Alvarez', 'Caren Khairallah', 'Clarissa Holland Wey', 'Katiane Witt Pierry'] },
-  { name: 'Handsomes', players: ['Maxime Cloutier', 'Simon Lamy', 'Jérémie Devinant', ''] },
+  { name: 'Handsomes', players: ['Maxime Cloutier', 'Simon Lamy', 'Jérémie Devinant', 'Alexandra Nimigeanu'] },
   { name: 'Persepolis', players: ['Ali Mohammadinezhad', 'Pouya Asna', 'Sam Abdelrahman', 'Ali Gillani'] },
   { name: 'Ball Busters', players: ['Laurie-Pascale Therrien', 'Frédérique Faucher', 'Erik Baker', 'Sandrine Bissonnette'] },
-  { name: 'SmashBros', players: ['Arvy Manaloto', 'Alain Lamontagne', 'John Patrick Dela Rosa', 'Yamoor Hamid'] },
-  { name: 'Hard Hat Hitters', players: ['Jaâfar Ziha', 'Frederik Marion', 'Christopher Roa-Quispe', 'Yves Larocque'] }
+  { name: 'Team Gwapo', players: ['Arvy Manaloto', 'Alain Lamontagne', 'John-Patrick Dela Rosa', 'Yamoor Hamid'] },
+  { name: 'Hard Hat Hitters', players: ['Jaâfar Ziha', 'Frederik Marion', 'Christopher Roa-Quispe', 'Yves Larocque'] },
+  { name: 'Net Destroyers', players: ['Cyrian Kedowide', 'François Veilleux', 'Jahn Somejo', 'Marwa Hamouch'] },
+  { name: 'Nothing But Net', players: ['Adrian Hrubesz', 'Leila Ben-Ohoud', 'Alanna Payero', 'Harish Singh'] },
+  { name: 'Toronto Manz', players: ['Amar Fedlu', 'Nicholas Zaccak', 'Justin Von Pannier', ''] }
 ];
 
 const DEFAULT_SONGS = [
@@ -1144,7 +1147,43 @@ const DEFAULT_SONGS = [
   { suggererPar: 'Victor Alexandre Frings-Morales', nom: "YOU'RE THE ONE", artiste: 'KAYTRANADA' },
   { suggererPar: 'Victor Alexandre Frings-Morales', nom: 'La seule', artiste: 'Bigflo et Oli' },
   { suggererPar: 'Victor Alexandre Frings-Morales', nom: 'Casa de Bamba', artiste: 'Martinho Da Vila' },
-  { suggererPar: 'Alex Xin', nom: 'Bubble Gum', artiste: 'New Jeans' }
+  { suggererPar: 'Alex Xin', nom: 'Bubble Gum', artiste: 'New Jeans' },
+  { suggererPar: 'John-Patrick Dela Rosa', nom: 'Danza Kuduro', artiste: 'Don Omar' },
+  { suggererPar: 'Arvy Manaloto', nom: 'Fireball', artiste: 'Pitbull' },
+  { suggererPar: 'Alanna Payero', nom: 'Lost', artiste: 'Frank Ocean' },
+  { suggererPar: 'Alanna Payero', nom: 'Run It!', artiste: 'Chris Brown' },
+  { suggererPar: 'Alanna Payero', nom: "Creepin'", artiste: 'Metro Boomin, The Weeknd' },
+  { suggererPar: 'Chris Roa', nom: 'La Bachata', artiste: 'Manuel Turizo' },
+  { suggererPar: 'Chris Roa', nom: 'Jerusalema', artiste: 'Master KG' },
+  { suggererPar: 'Chris Roa', nom: 'No Lie', artiste: 'Sean Paul, Dua Lipa' },
+  { suggererPar: 'Chris Roa', nom: 'Agosto', artiste: 'Bad Bunny' },
+  { suggererPar: 'Chris Roa', nom: 'Si Antes Te Hubiera Conocido', artiste: 'Karol G' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Be My Lover', artiste: 'La Bouche' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Got 2 luv you', artiste: 'Sean Paul' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'LA FAMA', artiste: 'Rosalia' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Escapism.', artiste: 'RAYE' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Flames of fortune', artiste: 'Don Toliver' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'E85', artiste: 'Don Toliver' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Prada', artiste: 'Casso, RAYE & D-Block Europe' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Berghain', artiste: 'Rosalia' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Con Altura', artiste: 'Rosalia' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'BIZCOCHITO', artiste: 'Rosalia' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Porcelana', artiste: 'Rosalia' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Goals', artiste: 'LISA, Anitta & REMA' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Bad Angel', artiste: 'Anyma & LISA' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'MONEY', artiste: 'LISA' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'La Corriente', artiste: 'Bad Bunny & Tony Dize' },
+  { suggererPar: 'Alanna Payero', nom: 'Mennaj Moun Yo', artiste: 'Tony Mix' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Me Porte Bonito', artiste: 'Bad Bunny' },
+  { suggererPar: 'Alanna Payero', nom: 'Bonafide Love', artiste: 'Buju Banton & Wayne Wonder' },
+  { suggererPar: 'Alanna Payero', nom: 'Quevedo: Bzrp Music Session Vol.52/66', artiste: '' },
+  { suggererPar: 'Alanna Payero', nom: 'Baila Conmigo', artiste: 'Dayvi & Victor Cardenas' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'BOBO', artiste: 'Aya Nakamura' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Sexy Nana', artiste: 'Aya Nakamura' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Baby', artiste: 'Aya Nakamura' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Friday', artiste: 'Riton & Nightcrawlers' },
+  { suggererPar: 'Alanna Payero / Porter Gang', nom: 'Hypnotized', artiste: 'Anyma & Ellie Goulding' },
+  { suggererPar: 'Alanna Payero', nom: 'LET THE WORLD BURN', artiste: 'Chris Grey' }
 ];
 
 function defaultState(){
