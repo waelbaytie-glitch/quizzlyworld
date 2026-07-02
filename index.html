@@ -3076,16 +3076,50 @@ function gameScoreSummary(match, side){
   return played.map(g => g[side]).join('-');
 }
 
-// Which champion's podium has already played its build-up animation, so a plain
-// re-render doesn't restart it (see the podium block below).
+// Which champion's podium is currently mounted. The podium element is built ONCE
+// per champion and then left in the DOM untouched across re-renders, so its
+// build-up animation runs to completion instead of being cut short by a Firebase
+// echo that arrives mid-animation.
 let podiumRevealedFor = null;
+
+function buildPodiumHtml(finalMatch, thirdPlaceMatch){
+  const gold = { cls: 'gold', medal: '🥇', rank: 1, teamId: finalMatch.winnerId };
+  const silver = { cls: 'silver', medal: '🥈', rank: 2, teamId: finalMatch.loserId };
+  const bronze = (thirdPlaceMatch && thirdPlaceMatch.winnerId)
+    ? { cls: 'bronze', medal: '🥉', rank: 3, teamId: thirdPlaceMatch.winnerId }
+    : null;
+  // Real podium layout: 2nd on the left, 1st centered and tallest, 3rd on the
+  // right and shortest — not just 3 equal-height cards in finish order.
+  const stand = [silver, gold, bronze].filter(Boolean);
+  return `<div class="podium animate-in">${stand.map(p => `
+    <div class="podium-place ${p.cls}">
+      <div class="podium-card">
+        <span class="podium-medal">${p.medal}</span>
+        <span class="podium-team">${escapeHtml(teamName(p.teamId))}</span>
+      </div>
+      <div class="podium-step">${p.rank}</div>
+    </div>
+  `).join('')}</div>`;
+}
+
 function renderBracketView(){
   const container = document.getElementById('bracketContainer');
   if(!state.knockout){
     container.innerHTML = `<div class="empty-note">${t('bracket.empty')}</div>`;
+    podiumRevealedFor = null;
     return;
   }
-  container.innerHTML = '';
+
+  // Rounds live in their own child so we can rebuild them on every render WITHOUT
+  // wiping the podium above them.
+  let roundsEl = document.getElementById('bracketRounds');
+  if(!roundsEl){
+    container.innerHTML = '';
+    roundsEl = document.createElement('div');
+    roundsEl.id = 'bracketRounds';
+    container.appendChild(roundsEl);
+  }
+  roundsEl.innerHTML = '';
   const bracket = document.createElement('div');
   bracket.className = 'bracket';
   state.knockout.rounds.forEach(round=>{
@@ -3095,7 +3129,7 @@ function renderBracketView(){
     col.innerHTML = `<h4>${escapeHtml(tRoundName(round.name))}</h4>` + matches.map(bracketMatchHtml).join('');
     bracket.appendChild(col);
   });
-  container.appendChild(bracket);
+  roundsEl.appendChild(bracket);
   let flatIdx = 0;
   state.knockout.rounds.forEach(round=>{
     round.matchIds.forEach(mid=>{
@@ -3109,37 +3143,21 @@ function renderBracketView(){
     });
   });
 
-  if(state.stage === 'done'){
-    const finalMatch = state.matches.find(m => m.stage === 'final');
-    if(finalMatch && finalMatch.winnerId){
+  // Podium: mount it once for a given champion and then never rebuild it while the
+  // champion stays the same — that's what keeps the entrance animation continuous.
+  const existingPodium = container.querySelector('.podium');
+  const finalMatch = (state.stage === 'done') ? state.matches.find(m => m.stage === 'final') : null;
+  if(finalMatch && finalMatch.winnerId){
+    if(podiumRevealedFor !== finalMatch.winnerId || !existingPodium){
+      if(existingPodium) existingPodium.remove();
       const thirdPlaceMatch = state.matches.find(m => m.stage === 'third_place');
-      const gold = { cls: 'gold', medal: '🥇', rank: 1, teamId: finalMatch.winnerId };
-      const silver = { cls: 'silver', medal: '🥈', rank: 2, teamId: finalMatch.loserId };
-      const bronze = (thirdPlaceMatch && thirdPlaceMatch.winnerId)
-        ? { cls: 'bronze', medal: '🥉', rank: 3, teamId: thirdPlaceMatch.winnerId }
-        : null;
-      // Play the build-up animation only the FIRST time this champion's podium is
-      // shown. Every later re-render (Firebase sync, tab work) rebuilds the DOM,
-      // which would otherwise restart the entrance and make the podium flicker /
-      // "cut and come back". Later renders show it already standing (no animation).
-      const animate = podiumRevealedFor !== finalMatch.winnerId;
       podiumRevealedFor = finalMatch.winnerId;
-      // Real podium layout: 2nd on the left, 1st centered and tallest, 3rd on the
-      // right and shortest — not just 3 equal-height cards in finish order.
-      const stand = [silver, gold, bronze].filter(Boolean);
-      const podiumHtml = `<div class="podium${animate ? ' animate-in' : ''}">${stand.map(p => `
-        <div class="podium-place ${p.cls}">
-          <div class="podium-card">
-            <span class="podium-medal">${p.medal}</span>
-            <span class="podium-team">${escapeHtml(teamName(p.teamId))}</span>
-          </div>
-          <div class="podium-step">${p.rank}</div>
-        </div>
-      `).join('')}</div>`;
-      container.insertAdjacentHTML('afterbegin', podiumHtml);
+      container.insertAdjacentHTML('afterbegin', buildPodiumHtml(finalMatch, thirdPlaceMatch));
     }
+    // else: same champion and podium already standing — leave it fully alone.
   } else {
-    podiumRevealedFor = null; // tournament no longer done — replay on the next win
+    if(existingPodium) existingPodium.remove();
+    podiumRevealedFor = null;
   }
 }
 
