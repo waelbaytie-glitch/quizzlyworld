@@ -537,16 +537,29 @@
   @keyframes tabFade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
   .tab-panel:not(.hidden){animation:tabFade .26s ease both;}
 
-  /* 7 — Podium steps rise into place (gold last & tallest, for drama) */
-  @keyframes podiumRise{from{opacity:0;transform:translateY(26px);}to{opacity:1;transform:none;}}
-  .podium-place{animation:podiumRise .6s cubic-bezier(.2,.85,.25,1) both;}
-  .podium-place.bronze{animation-delay:.08s;}
-  .podium-place.silver{animation-delay:.18s;}
-  .podium-place.gold{animation-delay:.32s;}
+  /* 7 — Podium builds up like a real ceremony: risers grow from the floor, the
+         cards pop in above them (gold last & highest), gold gets a shine sweep and
+         the medals keep a gentle bounce. */
+  @keyframes podiumStepGrow{0%{transform:scaleY(0);}72%{transform:scaleY(1.06);}100%{transform:scaleY(1);}}
+  @keyframes podiumCardPop{0%{opacity:0;transform:translateY(32px) scale(.85);}70%{opacity:1;transform:translateY(-4px) scale(1.03);}100%{opacity:1;transform:none;}}
+  @keyframes podiumMedalBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+  @keyframes goldShine{0%{transform:translateX(-140%) skewX(-20deg);}60%,100%{transform:translateX(240%) skewX(-20deg);}}
+  .podium-step{transform-origin:bottom center;animation:podiumStepGrow .7s cubic-bezier(.2,.9,.25,1) both;}
+  .podium-card{animation:podiumCardPop .6s cubic-bezier(.2,.85,.25,1) both;}
+  .podium-medal{animation:podiumMedalBounce 1.7s ease-in-out infinite;}
+  .podium-place.bronze .podium-step{animation-delay:.05s;} .podium-place.bronze .podium-card{animation-delay:.34s;}
+  .podium-place.silver .podium-step{animation-delay:.18s;} .podium-place.silver .podium-card{animation-delay:.50s;}
+  .podium-place.gold   .podium-step{animation-delay:.34s;} .podium-place.gold   .podium-card{animation-delay:.70s;}
+  .podium-place.gold .podium-step{position:relative;overflow:hidden;}
+  .podium-place.gold .podium-step::after{content:'';position:absolute;top:0;left:0;width:45%;height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);
+    animation:goldShine 2.6s ease-in-out 1s infinite;pointer-events:none;}
 
-  /* 8 — One-time pop on the champion reveal emoji/name */
+  /* 8 — Champion reveal: emoji pops in, trophy radiates a soft pulsing glow */
   @keyframes championPop{0%{transform:scale(.4);opacity:0;}60%{transform:scale(1.12);opacity:1;}100%{transform:scale(1);}}
+  @keyframes trophyGlow{0%,100%{text-shadow:0 0 14px rgba(255,199,44,.5), 0 0 30px rgba(255,199,44,.25);}50%{text-shadow:0 0 26px rgba(255,199,44,.9), 0 0 60px rgba(255,199,44,.5);}}
   #championScreenOverlay:not(.hidden) .champion-emoji{animation:championPop .7s cubic-bezier(.2,.8,.2,1) both;}
+  #championScreenOverlay:not(.hidden) .champion-trophy{animation:champion-bounce 1.4s ease-in-out infinite, trophyGlow 2s ease-in-out infinite;}
 
   /* 9 — Accessibility: honour users who ask for less motion */
   @media (prefers-reduced-motion:reduce){
@@ -2227,6 +2240,9 @@ function onMatchUncompleted(match){
 // Self-contained canvas confetti — no external library, so it keeps working even
 // if a venue's wifi can't reach a CDN. Guards on getContext so it's a silent no-op
 // in non-browser test harnesses instead of throwing.
+// Only the most recent launch owns the canvas — a newer call bumps the token so
+// the previous animation loop bows out (avoids two loops fighting over clearRect).
+let confettiToken = 0;
 function launchConfetti(opts){
   opts = opts || {};
   const canvas = document.getElementById('confettiCanvas');
@@ -2234,42 +2250,76 @@ function launchConfetti(opts){
   const ctx = canvas.getContext('2d');
   if(!ctx) return;
   const big = !!opts.big;
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  const W = canvas.width = window.innerWidth;
+  const H = canvas.height = window.innerHeight;
   canvas.classList.remove('hidden');
-  const colors = ['#FFC72C','#2bab63','#F0B400','#e6a400','#ffffff'];
-  const count = big ? 160 : 50;
-  const duration = big ? 3200 : 1500;
+  const myToken = ++confettiToken;
+
+  const colors = ['#FFC72C','#2bab63','#F0B400','#e6a400','#ffffff','#ff6b6b','#4dabf7','#c77dff'];
+  const GRAV = 0.16, DRAG = 0.006;
   const particles = [];
-  for(let i=0;i<count;i++){
+
+  function spawn(x, y, vx, vy){
     particles.push({
-      x: Math.random() * canvas.width,
-      y: -20 - Math.random() * canvas.height * 0.3,
-      r: 4 + Math.random() * 5,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      vy: 2 + Math.random() * (big ? 4 : 3),
-      vx: (Math.random() - 0.5) * (big ? 3 : 2),
-      rot: Math.random() * Math.PI * 2,
-      vrot: (Math.random() - 0.5) * 0.3
+      x, y, vx, vy,
+      w: 6 + Math.random()*7, h: 8 + Math.random()*9,
+      color: colors[(Math.random()*colors.length)|0],
+      rot: Math.random()*Math.PI*2, vrot: (Math.random()-0.5)*0.28,
+      flip: Math.random()*Math.PI*2, vflip: 0.12 + Math.random()*0.16,
+      ribbon: Math.random() < 0.22,
+      life: 0, maxLife: 260 + Math.random()*160
     });
   }
-  const start = Date.now();
+  // A curtain of confetti drifting down from the top.
+  function rain(n){ for(let i=0;i<n;i++) spawn(Math.random()*W, -20 - Math.random()*H*0.25, (Math.random()-0.5)*2.4, 1 + Math.random()*2.5); }
+  // A "party popper" burst from a bottom corner, shooting up and inward.
+  function cannon(side){
+    const x = side < 0 ? W*0.06 : W*0.94;
+    const inward = side < 0 ? 1 : -1;
+    for(let i=0;i<95;i++){
+      const ang = -Math.PI/2 + inward*(Math.random()*0.55);
+      const sp = 9 + Math.random()*12;
+      spawn(x, H*0.98, Math.cos(ang)*sp + inward*2.5, Math.sin(ang)*sp);
+    }
+  }
+
+  if(big){ cannon(-1); cannon(1); rain(70); }
+  else { rain(45); }
+
+  // Big celebration keeps raining (and pops the odd extra cannon) for a while,
+  // then everything falls out naturally — a much longer, livelier finish.
+  const emitUntil = Date.now() + (big ? (opts.duration || 6000) : 0);
+
   function frame(){
-    const elapsed = Date.now() - start;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles.forEach(p=>{
-      p.x += p.vx; p.y += p.vy; p.rot += p.vrot;
+    if(myToken !== confettiToken) return; // superseded by a newer launch
+    ctx.clearRect(0, 0, W, H);
+    if(big && Date.now() < emitUntil && particles.length < 900){
+      rain(7);
+      if(Math.random() < 0.045) cannon(Math.random() < 0.5 ? -1 : 1);
+    }
+    for(let i = particles.length - 1; i >= 0; i--){
+      const p = particles[i];
+      p.vy += GRAV;
+      p.vx += Math.sin((p.life + p.rot) * 0.1) * 0.07; // flutter like real paper
+      p.vx *= (1 - DRAG); p.vy *= (1 - DRAG*0.4);
+      p.x += p.vx; p.y += p.vy;
+      p.rot += p.vrot; p.flip += p.vflip; p.life++;
+      const alpha = p.life > p.maxLife - 60 ? Math.max(0, (p.maxLife - p.life)/60) : 1;
       ctx.save();
+      ctx.globalAlpha = alpha;
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rot);
+      ctx.scale(1, Math.cos(p.flip)); // fake the 3D flip of a spinning flake
       ctx.fillStyle = p.color;
-      ctx.fillRect(-p.r/2, -p.r/2, p.r, p.r*1.6);
+      if(p.ribbon) ctx.fillRect(-1.5, -p.h, 3, p.h*2);
+      else ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
       ctx.restore();
-    });
-    if(elapsed < duration){
+      if(p.y > H + 50 || p.life > p.maxLife) particles.splice(i, 1);
+    }
+    if(particles.length > 0){
       requestAnimationFrame(frame);
     } else {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, W, H);
       canvas.classList.add('hidden');
     }
   }
