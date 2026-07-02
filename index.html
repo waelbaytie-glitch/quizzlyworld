@@ -263,7 +263,9 @@
 
   /* ---------- Mode Affichage (kiosk iPad) ---------- */
   .display-mode .tabbar{display:none;}
-  .display-mode .predict-block{display:none;}
+  /* Display/kiosk mode: predictions stay VISIBLE (live percentages) but can't be
+     voted on — taps do nothing. */
+  .display-mode .predict-btn{pointer-events:none;cursor:default;}
   .display-mode .match-card{cursor:default !important;}
   .display-mode .match-teams{font-size:18px;}
   .display-mode .card h2{font-size:22px;}
@@ -568,7 +570,7 @@
       <button class="lang-btn" data-lang="fr">FR</button>
       <button class="lang-btn" data-lang="en">EN</button>
     </div>
-    <div class="pcl-badge"><img src="pcl-logo.png" alt="PCL Construction"></div>
+    <div class="pcl-badge company-logo"><img src="pcl-logo.png" alt="PCL Construction"></div>
     <h1>🏐 Beach Volleyball <span class="amp">&amp; BBQ</span></h1>
     <div class="sub" data-i18n="header.sub">L'important c'est de s'amuser !! 🌴</div>
     <div id="currentRoleBadge" class="role-current-badge hidden"></div>
@@ -756,6 +758,12 @@
         <p style="color:var(--muted);font-size:13px;margin-bottom:8px;" data-i18n="version.desc">Dernière fois que la page (index.html) a été mise à jour sur le serveur.</p>
         <div id="codeLastUpdated" style="font-size:15px;font-weight:600;color:var(--accent);">—</div>
       </div>
+
+      <div class="card" id="logoToggleCard">
+        <h2 data-i18n="logo.title">🏢 Logo de la compagnie</h2>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:12px;" data-i18n="logo.desc">Affiche ou masque le logo PCL (en-tête et pied de page) pour tout le monde. Désactivé par défaut, en attendant l'autorisation de la compagnie.</p>
+        <button class="btn-secondary" id="logoToggleBtn"></button>
+      </div>
     </div>
 
     <div class="actions-row">
@@ -766,8 +774,8 @@
 </div>
 
 <footer class="app-footer">
-  <span data-i18n="footer.by">Présenté par</span>
-  <img src="pcl-logo.png" alt="PCL Construction">
+  <span class="company-logo" data-i18n="footer.by">Présenté par</span>
+  <img class="company-logo" src="pcl-logo.png" alt="PCL Construction">
   <button class="btn-secondary btn-small switch-role-btn" id="switchRoleBtn" data-i18n="footer.switch">Changer de rôle</button>
 </footer>
 
@@ -883,6 +891,10 @@ const I18N = {
   'devices.display':   {fr:'Affichage', en:'Display'},
   'version.title':     {fr:'🛠️ Version du code', en:'🛠️ Code version'},
   'version.desc':      {fr:'Dernière fois que la page (index.html) a été mise à jour sur le serveur.', en:'Last time the page (index.html) was updated on the server.'},
+  'logo.title':        {fr:'🏢 Logo de la compagnie', en:'🏢 Company logo'},
+  'logo.desc':         {fr:"Affiche ou masque le logo PCL (en-tête et pied de page) pour tout le monde. Désactivé par défaut, en attendant l'autorisation de la compagnie.", en:'Shows or hides the PCL logo (header and footer) for everyone. Off by default, pending company approval.'},
+  'logo.shown':        {fr:'✅ Logo affiché — cliquer pour masquer', en:'✅ Logo shown — click to hide'},
+  'logo.hidden':       {fr:'🚫 Logo masqué — cliquer pour afficher', en:'🚫 Logo hidden — click to show'},
   'footer.by':         {fr:'Présenté par', en:'Presented by'},
   'footer.switch':     {fr:'Changer de rôle', en:'Switch role'},
   'modal.court':       {fr:'Terrain', en:'Court'},
@@ -992,6 +1004,7 @@ function setLang(next){
   document.querySelectorAll('.lang-btn').forEach(b=> b.classList.toggle('active', b.dataset.lang === lang));
   applyStaticI18n();
   updateRoleBadge();
+  applyLogoVisibility(); // refresh the toggle button's dynamic label
   // Re-render whatever screen is currently up so dynamic strings refresh too.
   if(typeof currentRole !== 'undefined' && currentRole){
     if(state && state.stage === 'setup' && isAdmin()) renderSetupScreen();
@@ -1137,7 +1150,7 @@ const DEFAULT_SONGS = [
 function defaultState(){
   return {
     stage: 'setup', // setup | groups | knockout | done
-    config: { numTeams: DEFAULT_TEAMS.length, numCourts: 5, pointsPerGame: 15, gamesToWinMatch: 2 },
+    config: { numTeams: DEFAULT_TEAMS.length, numCourts: 5, pointsPerGame: 15, gamesToWinMatch: 2, showLogo: false },
     teams: DEFAULT_TEAMS.map(t => ({ id: uid('team'), name: t.name, players: t.players.slice(), emoji: '' })),
     groups: [],      // {id, name, teamIds:[]}
     matches: [],      // see createMatch()
@@ -1375,6 +1388,7 @@ function initFirebase(){
       // Teams synced in from Firebase (e.g. another device's pre-existing
       // roster) may still be missing an emoji — backfill and push it back.
       if(migrateTeamEmojis()) saveState();
+      applyLogoVisibility(); // a remote admin may have toggled the logo
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
       if(prevStage !== 'done' && state.stage === 'done'){
         launchConfetti({ big: true });
@@ -1625,6 +1639,25 @@ function applyRolePermissions(){
   document.getElementById('resultsShareCard').classList.toggle('hidden', !isAdmin());
   document.getElementById('deviceLoginsCard').classList.toggle('hidden', !isAdmin());
   document.getElementById('codeVersionCard').classList.toggle('hidden', !isAdmin());
+  document.getElementById('logoToggleCard').classList.toggle('hidden', !isAdmin());
+  applyLogoVisibility(); // ensure the toggle button's label is set when it becomes visible
+}
+
+// The company logo (PCL) is hidden for EVERYONE by default — off until an admin
+// explicitly enables it, to avoid using the company brand without approval. The
+// setting lives in state.config, so it syncs to every device via Firebase.
+function applyLogoVisibility(){
+  const show = !!(state && state.config && state.config.showLogo);
+  document.querySelectorAll('.company-logo').forEach(el => el.classList.toggle('hidden', !show));
+  const btn = document.getElementById('logoToggleBtn');
+  if(btn) btn.textContent = t(show ? 'logo.shown' : 'logo.hidden');
+}
+
+function toggleCompanyLogo(){
+  if(!isAdmin()) return;
+  state.config.showLogo = !state.config.showLogo;
+  saveState();            // syncs the choice to every device
+  applyLogoVisibility();
 }
 
 // Single source of truth for which of the 3 top-level screens is visible, based
@@ -1707,6 +1740,9 @@ function init(){
   wireGlobalEvents();
   document.querySelectorAll('.lang-btn').forEach(b=> b.classList.toggle('active', b.dataset.lang === lang));
   applyStaticI18n(); // translate all static markup to the saved language
+  if(!state.config) state.config = {};
+  if(state.config.showLogo == null) state.config.showLogo = false; // default OFF for older/synced states
+  applyLogoVisibility();
   try{ currentRole = localStorage.getItem(ROLE_KEY); }catch(e){ currentRole = null; }
   updateRoleBadge();
   if(currentRole){
@@ -2699,13 +2735,15 @@ function renderCourtsView(){
         </div>
       `;
       card.addEventListener('click', ()=> openMatchModal(match.id));
-      card.querySelectorAll('.predict-btn').forEach(btn=>{
-        btn.addEventListener('click', e=>{
-          e.stopPropagation(); // don't also open the score modal behind it
-          const matchId = btn.closest('[data-predict-match]').dataset.predictMatch;
-          castPrediction(matchId, btn.dataset.pick);
+      if(currentRole !== 'display'){ // kiosk can see predictions but not vote
+        card.querySelectorAll('.predict-btn').forEach(btn=>{
+          btn.addEventListener('click', e=>{
+            e.stopPropagation(); // don't also open the score modal behind it
+            const matchId = btn.closest('[data-predict-match]').dataset.predictMatch;
+            castPrediction(matchId, btn.dataset.pick);
+          });
         });
-      });
+      }
     } else {
       card.innerHTML = `
         <div>
@@ -2757,13 +2795,17 @@ function predictionBlockHtml(match){
     const detail = total ? ` (${total} vote${total>1?'s':''} — ${pct('team1')}% / ${pct('team2')}%)` : '';
     return `<div class="predict-block predict-result ${correct?'correct':'wrong'}">${correct ? t('predict.correct') : t('predict.wrong')}${detail}</div>`;
   }
+  const display = currentRole === 'display';
+  const totalLine = total
+    ? `<div class="predict-total">${total} ${lang==='fr' ? ('pronostic'+(total>1?'s':'')) : ('prediction'+(total>1?'s':''))}</div>`
+    : (display ? '' : `<div class="predict-total">${t('predict.first')}</div>`);
   return `
     <div class="predict-block">
       <div class="predict-row" data-predict-match="${match.id}">
         <button class="predict-btn ${myPick==='team1'?'picked':''}" data-pick="team1" style="--pct:${pct('team1')}%">${escapeHtml(teamName(match.team1Id))} · ${pct('team1')}%</button>
         <button class="predict-btn ${myPick==='team2'?'picked':''}" data-pick="team2" style="--pct:${pct('team2')}%">${escapeHtml(teamName(match.team2Id))} · ${pct('team2')}%</button>
       </div>
-      ${total ? `<div class="predict-total">${total} ${lang==='fr' ? ('pronostic'+(total>1?'s':'')) : ('prediction'+(total>1?'s':''))}</div>` : `<div class="predict-total">${t('predict.first')}</div>`}
+      ${totalLine}
     </div>
   `;
 }
@@ -2822,13 +2864,15 @@ function renderMatchesView(){
       card.addEventListener('click', ()=> openMatchModal(id));
     }
   });
-  container.querySelectorAll('.predict-btn').forEach(btn=>{
-    btn.addEventListener('click', e=>{
-      e.stopPropagation(); // don't also open the score modal behind it
-      const matchId = btn.closest('[data-predict-match]').dataset.predictMatch;
-      castPrediction(matchId, btn.dataset.pick);
+  if(currentRole !== 'display'){ // kiosk can see predictions but not vote
+    container.querySelectorAll('.predict-btn').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        e.stopPropagation(); // don't also open the score modal behind it
+        const matchId = btn.closest('[data-predict-match]').dataset.predictMatch;
+        castPrediction(matchId, btn.dataset.pick);
+      });
     });
-  });
+  }
 }
 /* ===================== RENDER: STANDINGS ===================== */
 function qualifierCountForFormat(){
@@ -3509,6 +3553,7 @@ function wireGlobalEvents(){
   document.querySelectorAll('.lang-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> setLang(btn.dataset.lang));
   });
+  document.getElementById('logoToggleBtn').addEventListener('click', toggleCompanyLogo);
 
   document.getElementById('roleJoueurBtn').addEventListener('click', ()=> chooseRole('joueur'));
   document.getElementById('roleAdminBtn').addEventListener('click', ()=> chooseRole('admin'));
