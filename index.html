@@ -1990,9 +1990,16 @@ function generateGroups(){
   for(let g=0; g<numGroups; g++){
     groups.push({ id: uid('group'), name: 'Group ' + String.fromCharCode(65 + g), teamIds: [] });
   }
-  // distribute teams evenly round-robin across groups
-  state.teams.forEach((team, i)=>{
-    groups[i % numGroups].teamIds.push(team.id);
+  // 100% random draw: shuffle the teams (Fisher–Yates) then spread them
+  // round-robin, so which team lands in which group is fully random while the
+  // groups stay balanced in size.
+  const shuffled = state.teams.map(t => t.id);
+  for(let i = shuffled.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  shuffled.forEach((teamId, i)=>{
+    groups[i % numGroups].teamIds.push(teamId);
   });
   state.groups = groups;
 }
