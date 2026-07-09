@@ -1344,7 +1344,9 @@ function defaultState(){
     stage: 'setup', // setup | groups | knockout | done
     config: { numTeams: DEFAULT_TEAMS.length, numCourts: 5, pointsPerGame: 15, gamesToWinMatch: 2,
       groupPoints: 21, // poules = set unique à 21 (ou 25)
-      bracketFormats: { quarterfinal: 'bo3_15', semifinal: 'bo3_15', final: 'bo3_15', third_place: 'bo3_15' },
+      // Combinaison recommandée pour tenir en ~3h : poules en set unique, quarts en
+      // set unique à 25 (rapides), puis vrais best-of-3 pour demies / finale / 3e-4e.
+      bracketFormats: { quarterfinal: 'set_25', semifinal: 'bo3_15', final: 'bo3_15', third_place: 'bo3_15' },
       showLogo: false },
     teams: DEFAULT_TEAMS.map(t => ({ id: uid('team'), name: t.name, players: t.players.slice(), emoji: '' })),
     groups: [],      // {id, name, teamIds:[]}
@@ -1939,7 +1941,7 @@ function init(){
   if(state.config.showLogo == null) state.config.showLogo = false; // default OFF for older/synced states
   // Per-phase format config (added later): backfill so older/synced states keep working.
   if(state.config.groupPoints == null) state.config.groupPoints = 21;
-  if(!state.config.bracketFormats) state.config.bracketFormats = { quarterfinal: 'bo3_15', semifinal: 'bo3_15', final: 'bo3_15', third_place: 'bo3_15' };
+  if(!state.config.bracketFormats) state.config.bracketFormats = { quarterfinal: 'set_25', semifinal: 'bo3_15', final: 'bo3_15', third_place: 'bo3_15' };
   else BRACKET_PHASES.forEach(p => { if(!state.config.bracketFormats[p]) state.config.bracketFormats[p] = 'bo3_15'; });
   applyLogoVisibility();
   try{ currentRole = localStorage.getItem(ROLE_KEY); }catch(e){ currentRole = null; }
