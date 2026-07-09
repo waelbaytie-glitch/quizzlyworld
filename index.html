@@ -3795,6 +3795,10 @@ function performReset(){
   state = defaultState();
   lastSyncedTournamentJSON = null;
   pushTournamentState();
+  // Wipe shared predictions too: the new tournament's matches get fresh ids, so any
+  // votes kept in Firebase would be orphaned dead weight — and could resurface as
+  // stale "correct/wrong" reveals. defaultState() already emptied the local copy.
+  if(predictionsReady) predictionsRef.set(null).catch(logFirebaseError('reset pronostics'));
   // A reset truly clears the device tally: wipe /deviceLogins in Firebase so no
   // stale past data resurrects on refresh, then re-register THIS device so the
   // count reflects only who reconnects from now on.
@@ -3877,6 +3881,12 @@ function runTestTournamentSimulation(){
     });
   }
   saveState();
+  // The simulated votes above only ever touched local state.predictions. Push them
+  // to Firebase too — otherwise the first shared-state snapshot after a refresh
+  // overwrites state.predictions (which is keyed to these fresh match ids) with the
+  // empty/old node, and every predicted match would lose its bar on reload. set()
+  // (not update) also wipes predictions orphaned to a previous tournament's ids.
+  if(predictionsReady) predictionsRef.set(state.predictions).catch(logFirebaseError('pronostics test'));
   renderAll();
   switchTab('bracket');
   showToast('🧪 Tournoi test généré jusqu\'à la fin !');
