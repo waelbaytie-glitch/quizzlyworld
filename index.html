@@ -480,6 +480,11 @@
   .game-row .score-input-wrap{display:flex;align-items:center;gap:6px;flex:1;}
   .game-row input[type=number]{width:60px;text-align:center;font-size:16px;font-weight:700;}
   .game-row .score-vs{color:var(--muted);font-size:12px;}
+  /* Setup: per-phase knockout format picker */
+  .bracket-formats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;}
+  .bracket-format-row{display:flex;align-items:center;gap:8px;background:var(--panel2);border-radius:8px;padding:6px 10px;}
+  .bracket-format-label{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--muted);min-width:96px;}
+  .bracket-format-select{flex:1;min-width:0;padding:6px 8px;border-radius:6px;font-size:13px;}
   .court-select-row{display:flex;gap:10px;align-items:center;margin-bottom:12px;}
   .match-winner-banner{
     text-align:center;font-weight:700;color:var(--accent);
@@ -734,19 +739,17 @@
           <input type="number" id="numCourtsInput" min="1" max="12" value="5">
         </div>
         <div class="field">
-          <label data-i18n="setup.points">Points per game</label>
-          <div class="seg" id="pointsSeg">
-            <button data-points="15" class="active">15 (cap 17)</button>
-            <button data-points="21">21 (cap 23)</button>
+          <label data-i18n="setup.groupPoints">Poules — set unique</label>
+          <div class="seg" id="groupPointsSeg">
+            <button data-gpoints="21" class="active">21</button>
+            <button data-gpoints="25">25</button>
           </div>
         </div>
       </div>
       <div class="field-row">
         <div class="field" style="flex:1 1 100%;">
-          <label data-i18n="setup.format">Format</label>
-          <div style="font-size:13px;color:var(--muted);background:var(--panel2);padding:8px 10px;border-radius:8px;" data-i18n="setup.formatDesc">
-            Best of 3 games — first to win 2 games wins the match.
-          </div>
+          <label data-i18n="setup.bracketFormats">Format des phases éliminatoires</label>
+          <div id="bracketFormatsGrid" class="bracket-formats-grid"></div>
         </div>
       </div>
       <div id="formatPreview" style="font-size:12px;color:var(--accent2);margin-top:6px;"></div>
@@ -961,6 +964,8 @@ const I18N = {
   'setup.numTeams':    {fr:"Nombre d'équipes (2–30)", en:'Number of teams (2–30)'},
   'setup.numCourts':   {fr:'Nombre de terrains', en:'Number of courts'},
   'setup.points':      {fr:'Points par set', en:'Points per game'},
+  'setup.groupPoints': {fr:'Poules — set unique', en:'Pools — single set'},
+  'setup.bracketFormats': {fr:'Format des phases éliminatoires', en:'Knockout phase formats'},
   'setup.format':      {fr:'Format', en:'Format'},
   'setup.formatDesc':  {fr:'Best of 3 sets — la première équipe à gagner 2 sets remporte le match.', en:'Best of 3 games — first to win 2 games wins the match.'},
   'setup.teams':       {fr:'2. Équipes & joueurs', en:'2. Teams & Players'},
@@ -1337,7 +1342,10 @@ const DEFAULT_SONGS = [
 function defaultState(){
   return {
     stage: 'setup', // setup | groups | knockout | done
-    config: { numTeams: DEFAULT_TEAMS.length, numCourts: 5, pointsPerGame: 15, gamesToWinMatch: 2, showLogo: false },
+    config: { numTeams: DEFAULT_TEAMS.length, numCourts: 5, pointsPerGame: 15, gamesToWinMatch: 2,
+      groupPoints: 21, // poules = set unique à 21 (ou 25)
+      bracketFormats: { quarterfinal: 'bo3_15', semifinal: 'bo3_15', final: 'bo3_15', third_place: 'bo3_15' },
+      showLogo: false },
     teams: DEFAULT_TEAMS.map(t => ({ id: uid('team'), name: t.name, players: t.players.slice(), emoji: '' })),
     groups: [],      // {id, name, teamIds:[]}
     matches: [],      // see createMatch()
@@ -1929,6 +1937,10 @@ function init(){
   applyStaticI18n(); // translate all static markup to the saved language
   if(!state.config) state.config = {};
   if(state.config.showLogo == null) state.config.showLogo = false; // default OFF for older/synced states
+  // Per-phase format config (added later): backfill so older/synced states keep working.
+  if(state.config.groupPoints == null) state.config.groupPoints = 21;
+  if(!state.config.bracketFormats) state.config.bracketFormats = { quarterfinal: 'bo3_15', semifinal: 'bo3_15', final: 'bo3_15', third_place: 'bo3_15' };
+  else BRACKET_PHASES.forEach(p => { if(!state.config.bracketFormats[p]) state.config.bracketFormats[p] = 'bo3_15'; });
   applyLogoVisibility();
   try{ currentRole = localStorage.getItem(ROLE_KEY); }catch(e){ currentRole = null; }
   updateRoleBadge();
@@ -1978,9 +1990,23 @@ function ensureTeamsArray(n){
 function renderSetupScreen(){
   document.getElementById('numTeamsInput').value = state.config.numTeams;
   document.getElementById('numCourtsInput').value = state.config.numCourts;
-  document.querySelectorAll('#pointsSeg button').forEach(b=>{
-    b.classList.toggle('active', Number(b.dataset.points) === state.config.pointsPerGame);
+  document.querySelectorAll('#groupPointsSeg button').forEach(b=>{
+    b.classList.toggle('active', Number(b.dataset.gpoints) === (state.config.groupPoints || 21));
   });
+  const bfGrid = document.getElementById('bracketFormatsGrid');
+  if(bfGrid){
+    const bf = state.config.bracketFormats || {};
+    bfGrid.innerHTML = BRACKET_PHASES.map(phase=>{
+      const cur = bf[phase] || 'bo3_15';
+      const opts = Object.keys(MATCH_FORMATS).map(k=>
+        `<option value="${k}" ${k===cur?'selected':''}>${MATCH_FORMATS[k].label[lang] || MATCH_FORMATS[k].label.en}</option>`
+      ).join('');
+      return `<div class="bracket-format-row">
+        <span class="bracket-format-label">${escapeHtml(phaseLabel(phase))}</span>
+        <select class="bracket-format-select" data-phase="${phase}">${opts}</select>
+      </div>`;
+    }).join('');
+  }
   ensureTeamsArray(state.config.numTeams);
   migrateTeamEmojis(); // give freshly-added teams their default emoji right away
   document.getElementById('formatPreview').textContent = describeFormat(state.config.numTeams);
@@ -2070,13 +2096,25 @@ function wireSetupEvents(){
     state.config.numCourts = n;
     saveState();
   });
-  document.querySelectorAll('#pointsSeg button').forEach(b=>{
+  document.querySelectorAll('#groupPointsSeg button').forEach(b=>{
     b.addEventListener('click', ()=>{
-      state.config.pointsPerGame = Number(b.dataset.points);
-      document.querySelectorAll('#pointsSeg button').forEach(x=>x.classList.toggle('active', x===b));
+      state.config.groupPoints = Number(b.dataset.gpoints);
+      document.querySelectorAll('#groupPointsSeg button').forEach(x=>x.classList.toggle('active', x===b));
       saveState();
     });
   });
+  // Per-phase bracket format selects are rebuilt on every renderSetupScreen(), so we
+  // listen on the stable container via delegation rather than on each <select>.
+  const bfGrid = document.getElementById('bracketFormatsGrid');
+  if(bfGrid){
+    bfGrid.addEventListener('change', e=>{
+      const sel = e.target.closest && e.target.closest('.bracket-format-select');
+      if(!sel) return;
+      if(!state.config.bracketFormats) state.config.bracketFormats = {};
+      state.config.bracketFormats[sel.dataset.phase] = sel.value;
+      saveState();
+    });
+  }
   document.getElementById('startTournamentBtn').addEventListener('click', onStartTournament);
 }
 
@@ -2281,12 +2319,43 @@ function freeCourtForMatch(match){
   }
   match.courtId = null;
 }
+/* ===================== MATCH FORMATS ===================== */
+// Each match's format is derived from config, not hard-coded: group matches are a
+// single set (21 or 25), and every knockout PHASE can carry its own format, chosen
+// by the admin on the setup screen. bestOf is 1 or 3; setsToWin follows from it.
+const MATCH_FORMATS = {
+  bo3_15: { bestOf: 3, target: 15, label: { fr: '2 sets sur 3 · 15 pts', en: 'Best of 3 · 15 pts' } },
+  bo3_21: { bestOf: 3, target: 21, label: { fr: '2 sets sur 3 · 21 pts', en: 'Best of 3 · 21 pts' } },
+  set_21: { bestOf: 1, target: 21, label: { fr: 'Set unique · 21 pts', en: 'Single set · 21 pts' } },
+  set_25: { bestOf: 1, target: 25, label: { fr: 'Set unique · 25 pts', en: 'Single set · 25 pts' } }
+};
+const BRACKET_PHASES = ['quarterfinal', 'semifinal', 'final', 'third_place'];
+const PHASE_ROUND_NAME = {
+  quarterfinal: 'Quarterfinal', semifinal: 'Semifinal',
+  final: 'Final', third_place: '🥉 Petite finale (3e place)'
+};
+function phaseLabel(phase){ return tRoundName(PHASE_ROUND_NAME[phase] || phase); }
+
+// Resolves a match to { bestOf, setsToWin, target }. Group = single set at
+// config.groupPoints; knockout = the per-phase choice (fallback to the classic
+// best-of-3 to 15 for any phase not explicitly configured).
+function matchFormat(match){
+  if(!match || match.stage === 'group'){
+    const target = (state.config && state.config.groupPoints) || 21;
+    return { bestOf: 1, setsToWin: 1, target };
+  }
+  const key = (state.config.bracketFormats && state.config.bracketFormats[match.stage]) || 'bo3_15';
+  const f = MATCH_FORMATS[key] || MATCH_FORMATS.bo3_15;
+  return { bestOf: f.bestOf, setsToWin: f.bestOf === 1 ? 1 : 2, target: f.target };
+}
+
 /* ===================== SCORING LOGIC ===================== */
-function gameWinner(g){
+function gameWinner(g, target){
+  if(g == null) return null;
   if(g.team1==null || g.team1==='' || g.team2==null || g.team2==='') return null;
   const a = Number(g.team1), b = Number(g.team2);
   if(isNaN(a) || isNaN(b) || a===b) return null;
-  const target = state.config.pointsPerGame;
+  if(target == null) target = (state.config && state.config.pointsPerGame) || 15;
   const cap = target + 2;
   const max = Math.max(a,b);
   const diff = Math.abs(a-b);
@@ -2296,17 +2365,20 @@ function gameWinner(g){
 }
 
 function computeGameWinCounts(match){
+  const fmt = matchFormat(match);
   let w1=0, w2=0;
-  for(let i=0;i<3;i++){
-    const gw = gameWinner(match.games[i]);
+  for(let i=0;i<fmt.bestOf;i++){
+    const gw = gameWinner(match.games[i], fmt.target);
     if(gw==='team1') w1++; else if(gw==='team2') w2++;
   }
   return { w1, w2 };
 }
 
 function isGame3Unlocked(match){
-  const gw1 = gameWinner(match.games[0]);
-  const gw2 = gameWinner(match.games[1]);
+  const fmt = matchFormat(match);
+  if(fmt.bestOf === 1) return false; // single-set matches never open a 3rd set
+  const gw1 = gameWinner(match.games[0], fmt.target);
+  const gw2 = gameWinner(match.games[1], fmt.target);
   return !!gw1 && !!gw2 && gw1 !== gw2;
 }
 
@@ -2316,12 +2388,13 @@ function teamName(id){ const t = findTeamById(id); return t ? (t.emoji ? t.emoji
 
 function recalcMatchStatus(match){
   const wasCompleted = match.status === 'completed';
+  const need = matchFormat(match).setsToWin;
   const { w1, w2 } = computeGameWinCounts(match);
-  if(w1 >= 2){
+  if(w1 >= need){
     match.winnerId = match.team1Id;
     match.loserId = match.team2Id;
     match.status = 'completed';
-  } else if(w2 >= 2){
+  } else if(w2 >= need){
     match.winnerId = match.team2Id;
     match.loserId = match.team1Id;
     match.status = 'completed';
@@ -2547,19 +2620,21 @@ function renderGamesContainer(match){
   // updates afterwards only mutate values/attributes in place via updateGame3LockState().
   const container = document.getElementById('gamesContainer');
   container.innerHTML = '';
-  for(let i=0;i<3;i++){
+  const fmt = matchFormat(match);
+  const setLabel = fmt.bestOf === 1 ? ('Set · ' + fmt.target + ' pts') : 'Set';
+  for(let i=0;i<fmt.bestOf;i++){
     const row = document.createElement('div');
     row.className = 'game-row';
     row.dataset.gameRow = i;
     const g = match.games[i];
     row.innerHTML = `
-      <label>Game ${i+1}</label>
+      <label>${setLabel}${fmt.bestOf > 1 ? ' ' + (i+1) : ''}</label>
       <div class="score-input-wrap">
         <input type="number" min="0" class="score-input" data-game="${i}" data-team="team1" value="${g.team1 ?? ''}" placeholder="0">
         <span class="score-vs">–</span>
         <input type="number" min="0" class="score-input" data-game="${i}" data-team="team2" value="${g.team2 ?? ''}" placeholder="0">
       </div>
-      <span class="locked-label" style="font-size:11px;color:var(--muted);">${t('st.locked')}</span>
+      ${fmt.bestOf > 1 && i === 2 ? `<span class="locked-label" style="font-size:11px;color:var(--muted);">${t('st.locked')}</span>` : ''}
     `;
     container.appendChild(row);
   }
@@ -2939,7 +3014,8 @@ function renderTeamsRosterView(){
 }
 
 function miniScoreText(match){
-  const played = match.games.filter(g => gameWinner(g));
+  const target = matchFormat(match).target;
+  const played = match.games.filter(g => gameWinner(g, target));
   if(played.length === 0) return '';
   return played.map(g => g.team1+'-'+g.team2).join(', ');
 }
@@ -3199,7 +3275,7 @@ function bracketMatchHtml(match){
 }
 
 function gameScoreSummary(match, side){
-  const played = match.games.filter(g => gameWinner(g));
+  const played = match.games.filter(g => gameWinner(g, matchFormat(match).target));
   if(played.length===0) return '';
   return played.map(g => g[side]).join('-');
 }
@@ -3391,7 +3467,12 @@ function renderRulesView(){
   const groups = state.groups;
   const sizes = groups.map(g => g.teamIds.length);
   const sizesUneven = new Set(sizes).size > 1;
-  const cap = state.config.pointsPerGame + 2;
+  const gp = state.config.groupPoints || 21;
+  const bfCfg = state.config.bracketFormats || {};
+  const phaseFmtLine = BRACKET_PHASES.map(p => {
+    const f = MATCH_FORMATS[bfCfg[p] || 'bo3_15'];
+    return phaseLabel(p) + ' : ' + (f.label[lang] || f.label.en);
+  }).join(' · ');
   const k = state.knockout; // { rounds, numGroups, bracketSize, wildcardCount }
   const firstRoundName = k.rounds[0].name;
   const fr = lang === 'fr';
@@ -3466,14 +3547,14 @@ function renderRulesView(){
 
   const T = fr ? {
     format:`📜 Format — ${n} équipes`,
-    formatBody:`Poules en round robin (tout le monde affronte tout le monde dans son groupe), puis phase éliminatoire en matchs à élimination directe (best of 3 sets, ${state.config.pointsPerGame} points par set, cap à ${cap}).`,
+    formatBody:`Poules en round robin (tout le monde affronte tout le monde dans son groupe) en <strong>set unique à ${gp} points</strong>, puis phase éliminatoire en matchs à élimination directe, avec un format choisi par phase — ${phaseFmtLine}.`,
     qualif:"🏅 Qualification pour l'élimination",
     why:'⚖️ Pourquoi le classement utilise des %',
     tb:['1. % de victoires (victoires / matchs joués)','2. Différentiel de sets par match joué','3. Différentiel de points par match joué',"4. Ordre alphabétique (cas d'égalité parfaite)"],
     ready:'🚦 « Match prêt, go » — terrains toujours occupés'
   } : {
     format:`📜 Format — ${n} teams`,
-    formatBody:`Round robin pools (everyone plays everyone in their group), then a single-elimination knockout stage (best of 3 games, ${state.config.pointsPerGame} points per game, cap at ${cap}).`,
+    formatBody:`Round robin pools (everyone plays everyone in their group) as a <strong>single set to ${gp} points</strong>, then a single-elimination knockout stage with a format chosen per phase — ${phaseFmtLine}.`,
     qualif:'🏅 Qualifying for the knockout',
     why:'⚖️ Why standings use %',
     tb:['1. Win % (wins / matches played)','2. Game differential per match played','3. Point differential per match played','4. Alphabetical order (perfect tie)'],
@@ -3526,7 +3607,9 @@ function buildExportText(){
   };
   const lines = [];
   lines.push(L.title);
-  lines.push(L.meta + ': ' + state.teams.length + ' | ' + L.courts + ': ' + state.config.numCourts + ' | ' + L.ppg + ': ' + state.config.pointsPerGame + ' (' + L.cap + ' ' + (state.config.pointsPerGame+2) + ') | ' + L.bo3);
+  const gpts = state.config.groupPoints || 21;
+  const poolsLabel = (lang === 'fr' ? 'Poules: set à ' : 'Pools: set to ') + gpts;
+  lines.push(L.meta + ': ' + state.teams.length + ' | ' + L.courts + ': ' + state.config.numCourts + ' | ' + poolsLabel);
   lines.push('='.repeat(50));
 
   const standingsMap = getAllGroupStandings();
@@ -3559,7 +3642,7 @@ function buildExportText(){
       round.matchIds.map(findMatchById).forEach(m=>{
         const t1 = m.team1Id ? teamName(m.team1Id) : L.tbd;
         const t2 = m.team2Id ? teamName(m.team2Id) : L.tbd;
-        const scores = m.games.filter(g=>gameWinner(g)).map(g=>g.team1+'-'+g.team2).join(', ');
+        const scores = m.games.filter(g=>gameWinner(g, matchFormat(m).target)).map(g=>g.team1+'-'+g.team2).join(', ');
         const result = m.winnerId ? `→ ${L.winner}: ${teamName(m.winnerId)}` : '';
         lines.push(`${t1} vs ${t2}  ${scores ? '['+scores+']' : ''}  ${result}`);
       });
@@ -3833,9 +3916,10 @@ function resetTournament(){
 // courts, the bracket, the podium and the prediction reveal all render correctly,
 // without having to manually play through dozens of real matches first.
 function simulateMatchResult(match){
-  const target = state.config.pointsPerGame;
+  const fmt = matchFormat(match);
+  const target = fmt.target;
   const winnerIsTeam1 = Math.random() < 0.5;
-  for(let g = 0; g < 2; g++){ // 2 straight games is enough to decide a best-of-3
+  for(let g = 0; g < fmt.setsToWin; g++){ // just enough straight sets to decide it
     const winnerScore = target + Math.floor(Math.random() * 3); // target..target+2
     const loserScore = Math.floor(Math.random() * (winnerScore - 1)); // always >=2 less
     if(winnerIsTeam1){
