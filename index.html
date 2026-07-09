@@ -741,6 +741,7 @@
         <div class="field">
           <label data-i18n="setup.groupPoints">Poules — set unique</label>
           <div class="seg" id="groupPointsSeg">
+            <button data-gpoints="15">15</button>
             <button data-gpoints="21" class="active">21</button>
             <button data-gpoints="25">25</button>
           </div>
@@ -798,6 +799,11 @@
     </div>
 
     <div id="tab-bracket" class="tab-panel hidden">
+      <div class="card" id="bracketFormatAdminCard" style="display:none;">
+        <h2 data-i18n="bracket.adminFormats">⚙️ Format des phases (Admin)</h2>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;" data-i18n="bracket.adminFormatsHint">Modifiable en cours de tournoi. Les scores déjà saisis sont recalculés selon le nouveau format.</div>
+        <div id="bracketFormatsLiveGrid" class="bracket-formats-grid"></div>
+      </div>
       <div class="card">
         <h2 data-i18n="bracket.title">🏆 Elimination Bracket</h2>
         <div id="bracketContainer"></div>
@@ -980,6 +986,8 @@ const I18N = {
   'tab.export':        {fr:'Export', en:'Export'},
   'courts.title':      {fr:'🏟️ Terrains en direct', en:'🏟️ Live Court View'},
   'bracket.title':     {fr:'🏆 Tableau à élimination', en:'🏆 Elimination Bracket'},
+  'bracket.adminFormats': {fr:'⚙️ Format des phases (Admin)', en:'⚙️ Phase formats (Admin)'},
+  'bracket.adminFormatsHint': {fr:'Modifiable en cours de tournoi. Les scores déjà saisis sont recalculés selon le nouveau format.', en:'Changeable mid-tournament. Any scores already entered are re-evaluated under the new format.'},
   'music.suggest':     {fr:'🎵 Suggérer une chanson', en:'🎵 Suggest a song'},
   'music.by':          {fr:'Suggéré par', en:'Suggested by'},
   'music.yourName':    {fr:'Ton nom', en:'Your name'},
@@ -3308,7 +3316,30 @@ function buildPodiumHtml(finalMatch, thirdPlaceMatch){
   `).join('')}</div>`;
 }
 
+// Admin-only panel (top of the Bracket tab) to change each knockout phase's format
+// live, mid-tournament. Hidden for everyone else and before the bracket exists.
+function renderBracketFormatControls(){
+  const card = document.getElementById('bracketFormatAdminCard');
+  const grid = document.getElementById('bracketFormatsLiveGrid');
+  if(!card || !grid) return;
+  if(!isAdmin() || !state.knockout){ card.style.display = 'none'; grid.innerHTML = ''; return; }
+  card.style.display = '';
+  const bf = state.config.bracketFormats || {};
+  const present = BRACKET_PHASES.filter(p => state.matches.some(m => m.stage === p));
+  grid.innerHTML = present.map(phase=>{
+    const cur = bf[phase] || 'bo3_15';
+    const opts = Object.keys(MATCH_FORMATS).map(k=>
+      `<option value="${k}" ${k===cur?'selected':''}>${MATCH_FORMATS[k].label[lang] || MATCH_FORMATS[k].label.en}</option>`
+    ).join('');
+    return `<div class="bracket-format-row">
+      <span class="bracket-format-label">${escapeHtml(phaseLabel(phase))}</span>
+      <select class="bracket-format-select live-bracket-format" data-phase="${phase}">${opts}</select>
+    </div>`;
+  }).join('');
+}
+
 function renderBracketView(){
+  renderBracketFormatControls();
   const container = document.getElementById('bracketContainer');
   if(!state.knockout){
     container.innerHTML = `<div class="empty-note">${t('bracket.empty')}</div>`;
@@ -4030,6 +4061,27 @@ function wireGlobalEvents(){
 
   document.getElementById('testTournamentBtn').addEventListener('click', testTournamentBtnClick);
   document.getElementById('resetTournamentBtn').addEventListener('click', resetTournament);
+
+  // Live (mid-tournament) knockout format change — admin only. Delegated because the
+  // selects are rebuilt on every renderBracketView().
+  const liveFmtGrid = document.getElementById('bracketFormatsLiveGrid');
+  if(liveFmtGrid){
+    liveFmtGrid.addEventListener('change', e=>{
+      const sel = e.target.closest && e.target.closest('.live-bracket-format');
+      if(!sel || !isAdmin()) return;
+      const phase = sel.dataset.phase;
+      if(!state.config.bracketFormats) state.config.bracketFormats = {};
+      state.config.bracketFormats[phase] = sel.value;
+      // Re-evaluate every match of this phase under the new format: scores already
+      // typed may now decide a winner sooner (or no longer decide one), which
+      // recalcMatchStatus handles — freeing/booking courts and advancing/reverting
+      // the bracket as needed.
+      state.matches.filter(m => m.stage === phase).forEach(m => recalcMatchStatus(m));
+      saveState();
+      renderAll();
+      showToast(lang === 'fr' ? '✅ Format mis à jour : ' + phaseLabel(phase) : '✅ Format updated: ' + phaseLabel(phase));
+    });
+  }
 
   document.getElementById('addSongBtn').addEventListener('click', addSong);
 
