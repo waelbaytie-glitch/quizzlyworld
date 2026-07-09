@@ -287,20 +287,111 @@
   table.standings tr.qualifies{background:#14301c40;}
   .qual-tag{font-size:9px;background:var(--accent);color:#163d1f;padding:2px 6px;border-radius:6px;margin-left:6px;font-weight:700;}
 
-  /* ---------- Bracket ---------- */
-  .bracket{
+  /* ---------- Bracket (éventail symétrique) ---------- */
+  #bracketRounds{overflow-x:auto;}
+  .bracket-fan{
+    --bline:#3a7a4f;      /* couleur des traits de l'arbre */
+    --bgap:30px;          /* espace horizontal entre colonnes = 2 x demi-connecteur */
     display:flex;
-    gap:24px;
-    overflow-x:auto;
-    padding:10px 4px 20px;
+    align-items:stretch;
+    justify-content:center;
+    min-width:max-content;
+    margin:0 auto;
+    padding:20px 10px 34px;
   }
-  .bracket-round{display:flex;flex-direction:column;justify-content:center;gap:18px;min-width:200px;}
-  .bracket-round h4{text-align:center;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px;}
+  .bracket-side{display:flex;align-items:stretch;}
+  .bracket-col{
+    width:200px;
+    box-sizing:border-box;
+    display:flex;
+    flex-direction:column;
+  }
+  .bracket-col + .bracket-col{margin-left:var(--bgap);}
+  .bracket-col h4, .bracket-center h4{
+    text-align:center;color:var(--muted);font-size:12px;
+    text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;
+  }
+  .col-body{flex:1 1 auto;display:flex;flex-direction:column;justify-content:space-around;}
+  .match-slot{
+    flex:1 1 0;
+    display:flex;
+    align-items:center;
+    position:relative;
+    padding:8px 0;
+  }
+  .match-slot .bracket-match{width:100%;}
+
+  /* --- Colonne centrale : finale + petite finale --- */
+  .bracket-center{
+    width:216px;
+    box-sizing:border-box;
+    margin:0 var(--bgap);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    position:relative;
+    min-height:380px;
+  }
+  .center-final{display:flex;flex-direction:column;justify-content:center;}
+  .final-slot .bracket-match{
+    box-shadow:0 0 0 2px var(--accent) inset;
+    background:var(--green-bg);
+  }
+  .third-place-box{
+    position:absolute;
+    left:50%;
+    bottom:0;
+    transform:translateX(-50%);
+    width:100%;
+    padding:10px 8px 6px;
+    border:1px dashed #2b5138;
+    border-radius:12px;
+    background:#0c1a11;
+  }
+  .third-place-box .match-slot{flex:none;padding:0;}
+
+  /* --- Traits de l'arbre --- */
+  /* Côté gauche : coudes qui sortent à droite, vers le centre */
+  .bracket-side.left .bracket-col:not(.single) .match-slot:nth-child(odd)::after{
+    content:'';position:absolute;left:100%;top:50%;width:calc(var(--bgap)/2);height:50%;
+    border-top:2px solid var(--bline);border-right:2px solid var(--bline);
+  }
+  .bracket-side.left .bracket-col:not(.single) .match-slot:nth-child(even)::after{
+    content:'';position:absolute;left:100%;bottom:50%;width:calc(var(--bgap)/2);height:50%;
+    border-bottom:2px solid var(--bline);border-right:2px solid var(--bline);
+  }
+  .bracket-side.left .bracket-col.single .match-slot::after{
+    content:'';position:absolute;left:100%;top:50%;width:var(--bgap);
+    border-top:2px solid var(--bline);
+  }
+  .bracket-side.left .bracket-col:not(.leaf) .match-slot::before{
+    content:'';position:absolute;right:100%;top:50%;width:calc(var(--bgap)/2);
+    border-top:2px solid var(--bline);
+  }
+  /* Côté droit : miroir (coudes qui sortent à gauche, vers le centre) */
+  .bracket-side.right .bracket-col:not(.single) .match-slot:nth-child(odd)::after{
+    content:'';position:absolute;right:100%;top:50%;width:calc(var(--bgap)/2);height:50%;
+    border-top:2px solid var(--bline);border-left:2px solid var(--bline);
+  }
+  .bracket-side.right .bracket-col:not(.single) .match-slot:nth-child(even)::after{
+    content:'';position:absolute;right:100%;bottom:50%;width:calc(var(--bgap)/2);height:50%;
+    border-bottom:2px solid var(--bline);border-left:2px solid var(--bline);
+  }
+  .bracket-side.right .bracket-col.single .match-slot::after{
+    content:'';position:absolute;right:100%;top:50%;width:var(--bgap);
+    border-top:2px solid var(--bline);
+  }
+  .bracket-side.right .bracket-col:not(.leaf) .match-slot::before{
+    content:'';position:absolute;left:100%;top:50%;width:calc(var(--bgap)/2);
+    border-top:2px solid var(--bline);
+  }
+
   .bracket-match{
     border-radius:10px;
     padding:10px;
     border:1px solid #1d3a26;
     font-size:13px;
+    background:var(--panel2);
   }
   .bracket-match.completed{background:var(--green-bg);}
   .bracket-match.in_progress{background:var(--yellow-bg);}
@@ -3079,7 +3170,7 @@ function bracketMatchHtml(match){
   const t2 = match.team2Id ? teamName(match.team2Id) : t('common.tbd');
   const w = match.winnerId;
   return `
-    <div class="bracket-match ${match.status}">
+    <div class="bracket-match ${match.status}" data-mid="${match.id}">
       <div class="bracket-team ${w && w===match.team1Id ? 'winner' : ''}">
         <span class="${!match.team1Id?'tbd':''}">${escapeHtml(t1)}</span>
         <span>${gameScoreSummary(match,'team1')}</span>
@@ -3142,27 +3233,105 @@ function renderBracketView(){
     container.appendChild(roundsEl);
   }
   roundsEl.innerHTML = '';
-  const bracket = document.createElement('div');
-  bracket.className = 'bracket';
-  state.knockout.rounds.forEach(round=>{
+
+  // Split the tournament into: two mirrored sides (all rounds except the final and
+  // the 3rd-place match), the final in the centre, and the 3rd-place match in a box
+  // below it. Within any round, the first half of the matches belongs to the LEFT
+  // subtree and the second half to the RIGHT subtree — match i always feeds the
+  // parent match floor(i/2), so this split keeps each branch of the tree intact.
+  const roundsAll = state.knockout.rounds;
+  const matchesOf = round => round.matchIds.map(findMatchById).filter(Boolean);
+  const finalRound = roundsAll.find(r => matchesOf(r).some(m => m.stage === 'final'));
+  const thirdRound = roundsAll.find(r => matchesOf(r).some(m => m.stage === 'third_place'));
+  const sideRounds = roundsAll.filter(r => r !== finalRound && r !== thirdRound);
+  const nSide = sideRounds.length;
+
+  const slotEl = match => {
+    const slot = document.createElement('div');
+    slot.className = 'match-slot';
+    slot.innerHTML = bracketMatchHtml(match);
+    return slot;
+  };
+  const colEl = (round, side) => {
     const col = document.createElement('div');
-    col.className = 'bracket-round';
-    const matches = round.matchIds.map(findMatchById);
-    col.innerHTML = `<h4>${escapeHtml(tRoundName(round.name))}</h4>` + matches.map(bracketMatchHtml).join('');
-    bracket.appendChild(col);
-  });
-  roundsEl.appendChild(bracket);
-  let flatIdx = 0;
-  state.knockout.rounds.forEach(round=>{
-    round.matchIds.forEach(mid=>{
-      const m = findMatchById(mid);
-      const el = bracket.querySelectorAll('.bracket-match')[flatIdx];
-      if(el && m.team1Id && m.team2Id){
-        el.style.cursor = 'pointer';
-        el.addEventListener('click', ()=> openMatchModal(mid));
-      }
-      flatIdx++;
+    col.className = 'bracket-col';
+    const ms = matchesOf(round);
+    const mid = Math.ceil(ms.length / 2);
+    const list = side === 'left' ? ms.slice(0, mid) : ms.slice(mid);
+    const h4 = document.createElement('h4');
+    h4.textContent = tRoundName(round.name);
+    col.appendChild(h4);
+    const body = document.createElement('div');
+    body.className = 'col-body';
+    list.forEach(m => body.appendChild(slotEl(m)));
+    col.appendChild(body);
+    return col;
+  };
+
+  const fan = document.createElement('div');
+  fan.className = 'bracket-fan';
+
+  // LEFT: outer round first (leaf) → inner round last (single = feeds the final)
+  if(nSide){
+    const left = document.createElement('div');
+    left.className = 'bracket-side left';
+    sideRounds.forEach((round, i) => {
+      const col = colEl(round, 'left');
+      if(i === 0) col.classList.add('leaf');
+      if(i === nSide - 1) col.classList.add('single');
+      left.appendChild(col);
     });
+    fan.appendChild(left);
+  }
+
+  // CENTRE: final on top, 3rd-place box pinned lower
+  const center = document.createElement('div');
+  center.className = 'bracket-center';
+  const cf = document.createElement('div');
+  cf.className = 'center-final';
+  const fh4 = document.createElement('h4');
+  fh4.textContent = tRoundName(finalRound ? finalRound.name : 'Final');
+  cf.appendChild(fh4);
+  if(finalRound){
+    matchesOf(finalRound).forEach(m => {
+      const slot = slotEl(m);
+      slot.classList.add('final-slot');
+      cf.appendChild(slot);
+    });
+  }
+  center.appendChild(cf);
+  if(thirdRound){
+    const tp = document.createElement('div');
+    tp.className = 'third-place-box';
+    const th4 = document.createElement('h4');
+    th4.textContent = tRoundName(thirdRound.name);
+    tp.appendChild(th4);
+    matchesOf(thirdRound).forEach(m => tp.appendChild(slotEl(m)));
+    center.appendChild(tp);
+  }
+  fan.appendChild(center);
+
+  // RIGHT: inner round first (single) → outer round last (leaf) — mirror of LEFT
+  if(nSide){
+    const right = document.createElement('div');
+    right.className = 'bracket-side right';
+    for(let i = nSide - 1; i >= 0; i--){
+      const col = colEl(sideRounds[i], 'right');
+      if(i === 0) col.classList.add('leaf');
+      if(i === nSide - 1) col.classList.add('single');
+      right.appendChild(col);
+    }
+    fan.appendChild(right);
+  }
+
+  roundsEl.appendChild(fan);
+
+  roundsEl.querySelectorAll('.bracket-match').forEach(el => {
+    const m = findMatchById(el.dataset.mid);
+    if(m && m.team1Id && m.team2Id){
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => openMatchModal(m.id));
+    }
   });
 
   // Podium: mount it once for a given champion and then never rebuild it while the
