@@ -635,6 +635,19 @@
   @keyframes tabFade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
   .tab-panel:not(.hidden){animation:tabFade .26s ease both;}
 
+  /* Estimated-time-to-finish banner, shown above every tab while the tournament runs */
+  .eta-banner{
+    display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
+    background:var(--panel2);border:1px solid #2b5138;border-radius:12px;
+    padding:9px 14px;margin:0 0 14px;font-size:14px;color:var(--text);text-align:center;
+  }
+  .eta-banner.hidden{display:none;}
+  .eta-banner .eta-icon{font-size:16px;}
+  .eta-banner strong{color:var(--accent);white-space:nowrap;}
+  .eta-banner .eta-sub{color:var(--muted);font-size:12px;font-weight:400;}
+  .display-mode .eta-banner{font-size:18px;}
+  .display-mode .eta-banner .eta-sub{font-size:15px;}
+
   /* 7 — Podium builds up like a real ceremony: risers grow from the floor, the
          cards pop in above them (gold last & highest), gold gets a shine sweep and
          the medals keep a gentle bounce. */
@@ -779,6 +792,11 @@
       <button data-tab="music" data-i18n="tab.music">Musique</button>
       <button data-tab="rules" data-i18n="tab.rules">Règles</button>
       <button data-tab="export" data-i18n="tab.export">Export</button>
+    </div>
+
+    <div id="etaBanner" class="eta-banner hidden">
+      <span class="eta-icon">⏱️</span>
+      <span id="etaText"></span>
     </div>
 
     <div id="tab-courts" class="tab-panel">
@@ -2938,6 +2956,7 @@ function stageLabel(stage){
 }
 /* ===================== RENDER: ROOT ===================== */
 function renderAll(){
+  renderEtaBanner();
   renderCourtsView();
   renderTeamsRosterView();
   renderMatchesView();
@@ -2948,6 +2967,52 @@ function renderAll(){
   renderExportView();
   renderDeviceLoginsView();
   renderCodeVersion();
+}
+
+/* ===================== ESTIMATED TIME TO FINISH ===================== */
+// Roughly how long is left, assuming ~22 min per match. We count matches not yet
+// completed and turn them into "waves": within a stage, matches run in parallel up
+// to the number of courts; stages themselves are sequential (a knockout round can't
+// start before the previous one finishes), so their waves add up. This keeps a
+// nearly-empty-but-still-deep bracket from being under-estimated.
+const EST_MATCH_MINUTES = 22;
+function estimateRemainingMinutes(){
+  const courts = Math.max(1, (state.config && state.config.numCourts) || 1);
+  const remaining = (state.matches || []).filter(m => m.status !== 'completed');
+  if(!remaining.length) return 0;
+  const stageChain = ['group', 'round16', 'quarterfinal', 'semifinal', 'final'];
+  let waves = 0;
+  stageChain.forEach(st => {
+    const cnt = remaining.filter(m => m.stage === st || (st === 'final' && m.stage === 'third_place')).length;
+    if(cnt) waves += Math.ceil(cnt / courts);
+  });
+  waves = Math.max(waves, Math.ceil(remaining.length / courts)); // never below raw throughput
+  return waves * EST_MATCH_MINUTES;
+}
+function formatDurationMin(mins){
+  if(mins <= 0) return null;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return h === 0 ? (m + ' min') : (h + 'h' + String(m).padStart(2, '0'));
+}
+function renderEtaBanner(){
+  const el = document.getElementById('etaBanner');
+  const txt = document.getElementById('etaText');
+  if(!el || !txt) return;
+  const inProgress = state.stage === 'groups' || state.stage === 'knockout';
+  const mins = estimateRemainingMinutes();
+  if(!inProgress || mins <= 0){ el.classList.add('hidden'); return; }
+  const remainingCount = (state.matches || []).filter(m => m.status !== 'completed').length;
+  const dur = formatDurationMin(mins);
+  const end = new Date(Date.now() + mins * 60000);
+  const hh = end.getHours(), mm = String(end.getMinutes()).padStart(2, '0');
+  const fr = lang === 'fr';
+  const clock = fr ? (hh + 'h' + mm) : (hh + ':' + mm);
+  const sub = fr
+    ? `· vers ${clock} · ${remainingCount} match${remainingCount > 1 ? 's' : ''} restant${remainingCount > 1 ? 's' : ''}`
+    : `· around ${clock} · ${remainingCount} match${remainingCount > 1 ? 'es' : ''} left`;
+  txt.innerHTML = (fr ? 'Fin du tournoi estimée dans ' : 'Estimated time to finish: ')
+    + `<strong>~${dur}</strong> <span class="eta-sub">${sub}</span>`;
+  el.classList.remove('hidden');
 }
 
 /* ===================== RENDER: TEAMS ROSTER ===================== */
