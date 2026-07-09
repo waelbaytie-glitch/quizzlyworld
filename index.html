@@ -1449,6 +1449,13 @@ function getVoterId(){
 
 let tournamentRef = null;
 let tournamentReady = false;
+// Gates pushes until we've heard from Firebase at least once. Without it, a device
+// that boots on a fresh defaultState() (empty, stage 'setup' — e.g. cleared cache
+// or first visit) would push that empty state over the real tournament AND bump
+// lastAppliedUpdatedAt to "now", making the genuine (older-timestamped) snapshot get
+// rejected as stale — wiping the tournament for everyone until another device
+// re-pushes it. Mirrors songsLoaded for the songs feed.
+let tournamentLoaded = false;
 let lastSyncedTournamentJSON = null;
 let lastAppliedUpdatedAt = 0;
 let tournamentSyncTimer = null;
@@ -1517,7 +1524,7 @@ function scheduleTournamentSync(){
 }
 
 function pushTournamentState(){
-  if(!tournamentReady) return;
+  if(!tournamentReady || !tournamentLoaded) return; // never push before the first snapshot
   const payload = extractSyncableTournamentState();
   const json = jsonForCompare(payload);
   if(json === lastSyncedTournamentJSON) return; // nothing actually changed
@@ -1580,6 +1587,8 @@ function initFirebase(){
       if(!val){
         // First time this Firebase database is used for the tournament: seed it
         // with whatever this device currently has (e.g. the pre-loaded teams).
+        // The node is genuinely empty, so there's nothing to clobber — allow the push.
+        tournamentLoaded = true;
         pushTournamentState();
         return;
       }
@@ -1587,6 +1596,7 @@ function initFirebase(){
       // slow round-trip can otherwise deliver a stale state after newer local
       // changes (e.g. just-generated matches) and silently wipe them out.
       if((val.updatedAt || 0) < lastAppliedUpdatedAt) return;
+      tournamentLoaded = true; // a real tournament exists in Firebase — safe to sync now
       // Compare content only (without updatedAt, which is always fresh) so our own
       // echo is correctly recognized — otherwise every push replaces state.matches
       // etc. with newly-deserialized objects, orphaning whatever an open match
