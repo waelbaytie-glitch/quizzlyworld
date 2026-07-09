@@ -483,6 +483,8 @@
   /* Setup: per-phase knockout format picker */
   .bracket-formats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;}
   .bracket-format-row{display:flex;align-items:center;gap:8px;background:var(--panel2);border-radius:8px;padding:6px 10px;}
+  .bracket-format-row.locked{opacity:.55;}
+  .bracket-format-row.locked select{cursor:not-allowed;}
   .bracket-format-label{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--muted);min-width:96px;}
   .bracket-format-select{flex:1;min-width:0;padding:6px 8px;border-radius:6px;font-size:13px;}
   .court-select-row{display:flex;gap:10px;align-items:center;margin-bottom:12px;}
@@ -2336,6 +2338,7 @@ function freeCourtForMatch(match){
 const MATCH_FORMATS = {
   bo3_15: { bestOf: 3, target: 15, label: { fr: '2 sets sur 3 · 15 pts', en: 'Best of 3 · 15 pts' } },
   bo3_21: { bestOf: 3, target: 21, label: { fr: '2 sets sur 3 · 21 pts', en: 'Best of 3 · 21 pts' } },
+  set_15: { bestOf: 1, target: 15, label: { fr: 'Set unique · 15 pts', en: 'Single set · 15 pts' } },
   set_21: { bestOf: 1, target: 21, label: { fr: 'Set unique · 21 pts', en: 'Single set · 21 pts' } },
   set_25: { bestOf: 1, target: 25, label: { fr: 'Set unique · 25 pts', en: 'Single set · 25 pts' } }
 };
@@ -2357,6 +2360,17 @@ function matchFormat(match){
   const key = (state.config.bracketFormats && state.config.bracketFormats[match.stage]) || 'bo3_15';
   const f = MATCH_FORMATS[key] || MATCH_FORMATS.bo3_15;
   return { bestOf: f.bestOf, setsToWin: f.bestOf === 1 ? 1 : 2, target: f.target };
+}
+
+// A match has "started" the moment any score is typed or it leaves the upcoming
+// state — used to lock a phase's format once its matches are under way (the format
+// must be decided before playing, otherwise already-entered scores would be
+// re-interpreted against a different target/best-of).
+function matchHasScore(m){
+  return (m.games || []).some(g => (g.team1 !== '' && g.team1 != null) || (g.team2 !== '' && g.team2 != null));
+}
+function phaseFormatLocked(phase){
+  return state.matches.some(m => m.stage === phase && (m.status !== 'upcoming' || matchHasScore(m)));
 }
 
 /* ===================== SCORING LOGIC ===================== */
@@ -3326,14 +3340,16 @@ function renderBracketFormatControls(){
   card.style.display = '';
   const bf = state.config.bracketFormats || {};
   const present = BRACKET_PHASES.filter(p => state.matches.some(m => m.stage === p));
+  const lockedHint = lang === 'fr' ? '🔒 en cours' : '🔒 started';
   grid.innerHTML = present.map(phase=>{
     const cur = bf[phase] || 'bo3_15';
+    const locked = phaseFormatLocked(phase); // matches already started/scored → format frozen
     const opts = Object.keys(MATCH_FORMATS).map(k=>
       `<option value="${k}" ${k===cur?'selected':''}>${MATCH_FORMATS[k].label[lang] || MATCH_FORMATS[k].label.en}</option>`
     ).join('');
-    return `<div class="bracket-format-row">
-      <span class="bracket-format-label">${escapeHtml(phaseLabel(phase))}</span>
-      <select class="bracket-format-select live-bracket-format" data-phase="${phase}">${opts}</select>
+    return `<div class="bracket-format-row${locked?' locked':''}">
+      <span class="bracket-format-label">${escapeHtml(phaseLabel(phase))}${locked?` <span style="color:var(--muted);font-weight:400;">${lockedHint}</span>`:''}</span>
+      <select class="bracket-format-select live-bracket-format" data-phase="${phase}" ${locked?'disabled':''}>${opts}</select>
     </div>`;
   }).join('');
 }
@@ -4070,6 +4086,15 @@ function wireGlobalEvents(){
       const sel = e.target.closest && e.target.closest('.live-bracket-format');
       if(!sel || !isAdmin()) return;
       const phase = sel.dataset.phase;
+      // Format is frozen once a phase is under way — you decide the format BEFORE
+      // playing. Revert the control and tell the admin why.
+      if(phaseFormatLocked(phase)){
+        sel.value = (state.config.bracketFormats && state.config.bracketFormats[phase]) || 'bo3_15';
+        showToast(lang === 'fr'
+          ? '🔒 Phase déjà en cours — format non modifiable'
+          : '🔒 Phase already under way — format locked');
+        return;
+      }
       if(!state.config.bracketFormats) state.config.bracketFormats = {};
       state.config.bracketFormats[phase] = sel.value;
       // Re-evaluate every match of this phase under the new format: scores already
