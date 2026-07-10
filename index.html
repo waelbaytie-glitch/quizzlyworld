@@ -287,6 +287,20 @@
   table.standings tr.qualifies{background:#14301c40;}
   .qual-tag{font-size:9px;background:var(--accent);color:#163d1f;padding:2px 6px;border-radius:6px;margin-left:6px;font-weight:700;}
 
+  /* ---------- Teams tab: toolbar, status chips & admin actions ---------- */
+  .teams-toolbar{display:flex;justify-content:flex-end;margin-bottom:12px;}
+  .btn-small{font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid #2b5138;background:var(--panel2);color:var(--text);cursor:pointer;}
+  .btn-small:hover{border-color:var(--accent);}
+  .btn-small.btn-danger{border-color:#5a2020;color:#ffb3ad;}
+  .btn-small.btn-danger:hover{border-color:var(--red);background:#3a1414;}
+  .team-status{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-left:6px;white-space:nowrap;}
+  .team-status.standby{background:var(--yellow-bg);color:var(--yellow);}
+  .team-status.withdrawn{background:#3a1414;color:#ffb3ad;}
+  .team-admin-actions{display:flex;gap:8px;margin-top:8px;}
+  .team-item.team-standby{outline:1px solid #6b5a1f;}
+  .team-item.team-withdrawn{opacity:.55;}
+  .setup-remove-btn{flex:0 0 auto;line-height:1;padding:6px 9px;}
+
   /* ---------- Bracket (éventail symétrique) ---------- */
   #bracketRounds{overflow-x:auto;}
   .bracket-fan{
@@ -807,6 +821,9 @@
     </div>
 
     <div id="tab-teams" class="tab-panel hidden">
+      <div id="teamsToolbar" class="teams-toolbar" style="display:none;">
+        <button class="btn-secondary btn-small" id="printSheetBtn" data-i18n="teams.print">🖨️ Imprimer la fiche de présence</button>
+      </div>
       <div id="teamsRosterContainer"></div>
     </div>
 
@@ -1083,6 +1100,7 @@ const I18N = {
   'roster.noPlayers':  {fr:'Aucun joueur listé', en:'No players listed'},
   'roster.teams':      {fr:'équipes', en:'teams'},
   'roster.changeEmoji':{fr:"Changer l'emoji de l'équipe", en:'Change the team emoji'},
+  'teams.print':       {fr:'🖨️ Imprimer la fiche de présence', en:'🖨️ Print presence sheet'},
   'bracket.empty':     {fr:'Le tableau à élimination apparaîtra ici une fois la phase de poules terminée.', en:'The elimination bracket will appear here once the round robin group stage is complete.'},
   'round.round16':     {fr:'Huitièmes de finale', en:'Round of 16'},
   'round.quarterfinal':{fr:'Quarts de finale', en:'Quarterfinal'},
@@ -1729,6 +1747,7 @@ const ROLE_KEY = 'bvt_role_v1';
 const ROLE_CODES = { admin: '654', joueur: '123' };
 const RESET_CODE = '9111';
 const TEST_TOURNAMENT_CODE = '9000';
+const TEAM_ADMIN_CODE = '9100'; // gate for removing a team or putting one on standby
 let currentRole = null;
 let pendingRole = null;
 
@@ -2068,12 +2087,22 @@ function renderTeamList(){
           ${EMOJI_CHOICES.map(e=>`<option value="${e}" ${team.emoji===e?'selected':''}>${e}</option>`).join('')}
         </select>
         <input type="text" class="team-name-input" data-idx="${i}" value="${escapeAttr(team.name)}" placeholder="Team name">
+        <button type="button" class="btn-small btn-danger setup-remove-btn" data-team-id="${team.id}" title="${lang==='fr'?'Retirer cette équipe':'Remove this team'}">✕</button>
       </div>
       <div class="players-grid">
         ${[0,1,2,3].map(p=>`<input type="text" class="player-input" data-idx="${i}" data-p="${p}" value="${escapeAttr(team.players[p]||'')}" placeholder="Joueur ${p+1}">`).join('')}
       </div>
     `;
     container.appendChild(item);
+  });
+  container.querySelectorAll('.setup-remove-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const team = findTeamById(btn.dataset.teamId);
+      if(!team) return;
+      if(state.teams.length <= 2){ showToast(lang==='fr'?'Il faut au moins 2 équipes':'At least 2 teams required'); return; }
+      if(!promptTeamAdminCode()) return;
+      removeTeam(team.id); // not generated yet → the team simply disappears
+    });
   });
   container.querySelectorAll('.team-name-input').forEach(inp=>{
     inp.addEventListener('input', e=>{
@@ -2328,8 +2357,13 @@ function assignMatchesToFreeCourts(){
   let freeCourts = state.courts.filter(c => c.status === 'available');
   if(freeCourts.length === 0) return;
   const busy = busyTeamIdSet();
+  // Standby/withdrawn teams are skipped so a late (or out) team never sits on a court
+  // while the queue behind it waits — the next playable match jumps ahead instead.
+  const playable = m => m.team1Id && m.team2Id
+    && !isStandby(m.team1Id) && !isStandby(m.team2Id)
+    && !isWithdrawn(m.team1Id) && !isWithdrawn(m.team2Id);
   const candidates = state.matches
-    .filter(m => m.status === 'upcoming' && m.team1Id && m.team2Id)
+    .filter(m => m.status === 'upcoming' && playable(m))
     .sort((a,b)=> a.order - b.order);
 
   for(const court of freeCourts){
@@ -2400,6 +2434,11 @@ function matchHasScore(m){
 function phaseFormatLocked(phase){
   return state.matches.some(m => m.stage === phase && (m.status !== 'upcoming' || matchHasScore(m)));
 }
+
+// A standby team is temporarily skipped by the scheduler (it's running late) so its
+// matches don't tie up a court; a withdrawn team is out for good and forfeits.
+function isStandby(teamId){ const t = findTeamById(teamId); return !!(t && t.standby); }
+function isWithdrawn(teamId){ const t = findTeamById(teamId); return !!(t && t.withdrawn); }
 
 /* ===================== SCORING LOGIC ===================== */
 function gameWinner(g, target){
@@ -2960,6 +2999,145 @@ function syncKnockoutSlots(){
   });
 }
 
+/* ===================== TEAM MANAGEMENT (remove / standby) ===================== */
+function promptTeamAdminCode(){
+  const code = prompt(lang === 'fr' ? 'Code admin (pour cette action) :' : 'Admin code (for this action):');
+  if(code === null) return false;              // cancelled
+  if(code.trim() !== TEAM_ADMIN_CODE){ showToast(t('toast.badCode')); return false; }
+  return true;
+}
+
+// Awards a not-completed match to winnerId by writing a forfeit scoreline (target–0
+// for the required number of sets). Reuses the normal scoring path, so the court is
+// freed and the bracket advances exactly like a played result.
+function forfeitMatchTo(match, winnerId){
+  const fmt = matchFormat(match);
+  const winnerIsT1 = match.team1Id === winnerId;
+  match.games = blankGames();
+  for(let g = 0; g < fmt.setsToWin; g++){
+    match.games[g].team1 = winnerIsT1 ? String(fmt.target) : '0';
+    match.games[g].team2 = winnerIsT1 ? '0' : String(fmt.target);
+  }
+  match.forfeit = true;
+  recalcMatchStatus(match); // completes the match, frees the court, advances the bracket
+}
+
+// Any not-completed match where a withdrawn team ends up facing a known, still-in
+// opponent is forfeited to that opponent. Loops because forfeiting can resolve the
+// next round's slots, which may surface another withdrawn-team match.
+function forfeitWithdrawnKnockoutMatches(){
+  let changed = true, guard = 0;
+  while(changed && guard++ < 60){
+    changed = false;
+    state.matches.forEach(m => {
+      if(m.status === 'completed') return;
+      const t1w = m.team1Id && isWithdrawn(m.team1Id);
+      const t2w = m.team2Id && isWithdrawn(m.team2Id);
+      if(t1w && m.team2Id && !t2w){ forfeitMatchTo(m, m.team2Id); changed = true; }
+      else if(t2w && m.team1Id && !t1w){ forfeitMatchTo(m, m.team1Id); changed = true; }
+    });
+    if(changed) syncKnockoutSlots();
+  }
+}
+
+// Removes a team. Before the tournament is generated it just vanishes; once matches
+// exist the team is marked withdrawn and forfeits every remaining match, so the
+// tournament keeps running without it.
+function removeTeam(teamId){
+  const team = findTeamById(teamId);
+  if(!team) return;
+  const generated = !!state.knockout || (state.matches && state.matches.length > 0);
+  if(!generated){
+    state.teams = state.teams.filter(t => t.id !== teamId);
+    if(state.config) state.config.numTeams = state.teams.length;
+    saveState();
+    (state.stage === 'setup') ? renderSetupScreen() : renderAll();
+    showToast(lang === 'fr' ? '🗑️ Équipe retirée' : '🗑️ Team removed');
+    return;
+  }
+  team.withdrawn = true;
+  team.standby = false;
+  // Forfeit every not-completed match this team is in against a known opponent.
+  state.matches.forEach(m => {
+    if(m.status === 'completed') return;
+    const isT1 = m.team1Id === teamId, isT2 = m.team2Id === teamId;
+    if(!isT1 && !isT2) return;
+    const oppId = isT1 ? m.team2Id : m.team1Id;
+    if(oppId && oppId !== teamId) forfeitMatchTo(m, oppId);
+  });
+  syncKnockoutSlots();
+  forfeitWithdrawnKnockoutMatches();
+  assignMatchesToFreeCourts();
+  updateStageProgress();
+  saveState();
+  renderAll();
+  showToast(lang === 'fr' ? '🚫 ' + team.name + ' retirée — forfait sur ses matchs restants' : '🚫 ' + team.name + ' withdrawn — forfeits its remaining matches');
+}
+
+function setTeamStandby(teamId, on){
+  const team = findTeamById(teamId);
+  if(!team) return;
+  team.standby = on;
+  if(on){
+    // Free any court holding this team's not-yet-scored match, so it isn't wasted
+    // while the team is missing. A match already under way (scores typed) is left be.
+    state.matches.forEach(m => {
+      if(m.status !== 'in_progress') return;
+      if(m.team1Id !== teamId && m.team2Id !== teamId) return;
+      if(matchHasScore(m)) return;
+      freeCourtForMatch(m);
+      m.status = 'upcoming';
+    });
+  }
+  assignMatchesToFreeCourts(); // fill freed courts now, or pick this team's match back up on resume
+  saveState();
+  renderAll();
+  showToast(on
+    ? (lang === 'fr' ? '⏸️ ' + team.name + ' en standby' : '⏸️ ' + team.name + ' on standby')
+    : (lang === 'fr' ? '▶️ ' + team.name + ' réactivée' : '▶️ ' + team.name + ' back in'));
+}
+
+/* ===================== PRINTABLE PRESENCE SHEET ===================== */
+function printPresenceSheet(){
+  const fr = lang === 'fr';
+  const teams = (state.teams || []).filter(t => !t.withdrawn);
+  const title = fr ? 'Fiche de présence — PCL Beach Volleyball & BBQ' : 'Presence sheet — PCL Beach Volleyball & BBQ';
+  const card = t => {
+    const players = (t.players || []).filter(p => p && p.trim());
+    const rows = players.length
+      ? players.map(p => `<div class="mem"><span class="box"></span>${escapeHtml(p)}</div>`).join('')
+      : `<div class="mem muted">${fr ? '(aucun joueur listé)' : '(no players listed)'}</div>`;
+    return `<div class="team">
+      <div class="th">${t.emoji ? escapeHtml(t.emoji) + ' ' : ''}${escapeHtml(t.name)}</div>
+      <div class="mems">${rows}</div>
+      <div class="foot">
+        <div>${fr ? 'Présence totale' : 'Total present'} : <b>_____ / ${players.length || 4}</b></div>
+        <div><span class="box"></span> ${fr ? 'Photo prise' : 'Photo taken'}</div>
+      </div>
+    </div>`;
+  };
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+    *{box-sizing:border-box;} body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:14px;}
+    h1{font-size:17px;margin:0 0 2px;} .sub{color:#555;font-size:11px;margin-bottom:12px;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .team{border:1.5px solid #222;border-radius:8px;padding:9px 11px;break-inside:avoid;page-break-inside:avoid;}
+    .th{font-weight:700;font-size:15px;border-bottom:1px solid #999;padding-bottom:5px;margin-bottom:7px;}
+    .mem{display:flex;align-items:center;gap:8px;font-size:13px;padding:2px 0;}
+    .mem.muted{color:#888;font-style:italic;}
+    .box{display:inline-block;width:15px;height:15px;border:1.6px solid #222;border-radius:3px;flex:0 0 auto;}
+    .foot{display:flex;justify-content:space-between;align-items:center;margin-top:9px;padding-top:7px;border-top:1px solid #999;font-size:13px;}
+    @media print{ @page{margin:11mm;} }
+  </style></head><body>
+    <h1>${title}</h1>
+    <div class="sub">${escapeHtml(new Date().toLocaleString(fr ? 'fr-CA' : 'en-CA'))} — ${teams.length} ${fr ? 'équipes' : 'teams'}</div>
+    <div class="grid">${teams.map(card).join('')}</div>
+    <script>window.onload=function(){setTimeout(function(){window.print();},150);};<\/script>
+  </body></html>`;
+  const w = window.open('', '_blank');
+  if(!w){ showToast(fr ? '⚠️ Autorise les pop-ups pour imprimer' : '⚠️ Allow pop-ups to print'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+
 function stageLabel(stage){
   const key = 'stage.' + stage;
   return I18N[key] ? t(key) : stage;
@@ -3057,13 +3235,31 @@ function rosterTeamItemHtml(team){
       : `<div style="font-size:12px;color:var(--muted);font-style:italic;">${t('roster.noPlayers')}</div>`;
   }
 
+  const fr = lang === 'fr';
+  let statusChip = '';
+  if(team.withdrawn) statusChip = `<span class="team-status withdrawn">${fr ? '🚫 Retirée' : '🚫 Withdrawn'}</span>`;
+  else if(team.standby) statusChip = `<span class="team-status standby">${fr ? '⏸️ Standby' : '⏸️ Standby'}</span>`;
+
+  let adminActions = '';
+  if(admin && !team.withdrawn){
+    const standbyBtn = team.standby
+      ? `<button class="btn-small team-resume-btn" data-team-id="${team.id}">${fr ? '▶️ Réactiver' : '▶️ Resume'}</button>`
+      : `<button class="btn-small team-standby-btn" data-team-id="${team.id}">${fr ? '⏸️ Standby' : '⏸️ Standby'}</button>`;
+    adminActions = `<div class="team-admin-actions">
+      ${standbyBtn}
+      <button class="btn-small btn-danger team-remove-btn" data-team-id="${team.id}">${fr ? '✕ Retirer' : '✕ Remove'}</button>
+    </div>`;
+  }
+
   return `
-    <div class="team-item">
+    <div class="team-item${team.withdrawn ? ' team-withdrawn' : ''}${team.standby ? ' team-standby' : ''}">
       <div class="team-name-row">
         ${teamEmojiBadgeHtml(team)}
         ${nameHtml}
+        ${statusChip}
       </div>
       ${playersHtml}
+      ${adminActions}
     </div>
   `;
 }
@@ -3071,6 +3267,8 @@ function rosterTeamItemHtml(team){
 function renderTeamsRosterView(){
   const container = document.getElementById('teamsRosterContainer');
   container.innerHTML = '';
+  const toolbar = document.getElementById('teamsToolbar');
+  if(toolbar) toolbar.style.display = isAdmin() ? '' : 'none';
   state.groups.forEach(group=>{
     const card = document.createElement('div');
     card.className = 'card';
@@ -3109,6 +3307,29 @@ function renderTeamsRosterView(){
       team.players[Number(e.target.dataset.p)] = e.target.value;
       saveState();
     });
+  });
+
+  // Admin: remove (code-gated), standby (code-gated), resume (no code).
+  container.querySelectorAll('.team-remove-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const team = findTeamById(btn.dataset.teamId);
+      if(!team) return;
+      const msg = lang === 'fr'
+        ? 'Retirer « ' + team.name + ' » ? Elle perdra ses matchs restants par forfait.'
+        : 'Remove "' + team.name + '"? It will forfeit its remaining matches.';
+      if(!confirm(msg)) return;
+      if(!promptTeamAdminCode()) return;
+      removeTeam(team.id);
+    });
+  });
+  container.querySelectorAll('.team-standby-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(!promptTeamAdminCode()) return;
+      setTeamStandby(btn.dataset.teamId, true);
+    });
+  });
+  container.querySelectorAll('.team-resume-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> setTeamStandby(btn.dataset.teamId, false)); // no code to resume
   });
 }
 
@@ -4152,6 +4373,7 @@ function wireGlobalEvents(){
 
   document.getElementById('testTournamentBtn').addEventListener('click', testTournamentBtnClick);
   document.getElementById('resetTournamentBtn').addEventListener('click', resetTournament);
+  document.getElementById('printSheetBtn').addEventListener('click', printPresenceSheet);
 
   // Live (mid-tournament) knockout format change — admin only. Delegated because the
   // selects are rebuilt on every renderBracketView().
