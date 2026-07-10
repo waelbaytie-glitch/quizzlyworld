@@ -4322,6 +4322,21 @@ function runTestTournamentSimulation(){
 }
 
 function testTournamentBtnClick(){
+  // The test tournament REPLACES the shared tournament (new match ids, simulated
+  // results) and OVERWRITES predictions with fake votes — for every connected
+  // device. Running it during a real event wipes real results and predictions, so
+  // it's guarded by a loud, explicit confirmation on top of the code.
+  const liveData = Object.keys(state.predictions || {}).length > 0
+    || (state.matches || []).some(m => m.status !== 'upcoming' && !m.forfeit)
+    || state.stage === 'knockout' || state.stage === 'done';
+  const warn = lang === 'fr'
+    ? '⚠️ ATTENTION\n\nLe tournoi TEST remplace le tournoi actuel et EFFACE définitivement tous les résultats et TOUS les pronostics — pour TOUS les appareils.\n\n'
+      + (liveData ? 'Un tournoi avec des données réelles est en cours : elles seront PERDUES.\n\n' : '')
+      + 'À n\'utiliser qu\'AVANT le vrai événement. Continuer ?'
+    : '⚠️ WARNING\n\nThe TEST tournament replaces the current tournament and PERMANENTLY erases all results and ALL predictions — for EVERY device.\n\n'
+      + (liveData ? 'A tournament with real data is in progress: it will be LOST.\n\n' : '')
+      + 'Use only BEFORE the real event. Continue?';
+  if(!confirm(warn)) return;
   const code = prompt(t('prompt.testCode'));
   if(code === null) return; // cancelled
   if(code.trim() !== TEST_TOURNAMENT_CODE){
